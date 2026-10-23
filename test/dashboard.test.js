@@ -235,12 +235,21 @@ describe('proses dashboard (API + worker + dashboard sungguhan)', () => {
   }
 
   test('buat job lewat dashboard, status berubah, timeline memakai event yang sama dengan API', async (t) => {
-    const s = await withDashboard(t);
+    // Tanpa worker dulu: job selesai dalam 13-85 ms dengan konfigurasi test, jadi "melihat status
+    // berubah" sambil worker sudah jalan adalah race (AUDIT U-1). PENDING diamati secara deterministik,
+    // baru kemudian worker dinyalakan.
+    const s = await withDashboard(t, {}, { workers: 0 });
     const created = await s.dpost(report({ failTransientTimes: 1 }), { 'idempotency-key': 'dash-001' });
     assert.equal(created.status, 202);
     assert.equal(created.headers.get('x-upstream'), 'api');
 
-    const seen = new Set();
+    const pending = await s.dget(`/api/jobs/${created.body.id}`);
+    assert.equal(pending.body.job.status, 'PENDING');
+    assert.deepEqual(pending.body.timeline.attempts, []);
+    assert.equal(pending.body.timeline.waits[0].open, true);
+    await s.addWorker('w1');
+
+    const seen = new Set(['PENDING']);
     const done = await waitUntil(
       async () => {
         const { body } = await s.dget(`/api/jobs/${created.body.id}`);
@@ -251,7 +260,7 @@ describe('proses dashboard (API + worker + dashboard sungguhan)', () => {
     );
     assert.equal(done.job.status, 'SUCCEEDED');
     assert.equal(done.job.faultInjected, true);
-    assert.ok(seen.size >= 2, `dashboard harus melihat lebih dari satu status, dapat ${[...seen]}`);
+    assert.ok(seen.has('PENDING') && seen.has('SUCCEEDED'), `status yang diamati: ${[...seen]}`);
     assert.deepEqual(
       done.timeline.attempts.map((a) => a.outcome),
       ['retry_scheduled', 'succeeded'],
