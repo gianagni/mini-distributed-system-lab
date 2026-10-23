@@ -77,7 +77,13 @@ export async function setup(t, overrides = {}, { workers = 1, workerEnv = {} } =
     }
   };
   const reportFiles = async () => readdir(env.REPORT_DIR).catch(() => []);
-  const s = { env, dir, api, workers: ws, addWorker, restartApi, get, post, waitStatus, consistency, reportFiles };
+  // Proses tambahan (mis. dashboard) ikut dihentikan SEBELUM temp dir dihapus. Penting di Windows:
+  // file yang masih dibuka proses lain tidak bisa dihapus (EBUSY).
+  const track = (p) => {
+    procs.push(p);
+    return p;
+  };
+  const s = { env, dir, api, workers: ws, addWorker, restartApi, get, post, waitStatus, consistency, reportFiles, track };
   return s;
 }
 

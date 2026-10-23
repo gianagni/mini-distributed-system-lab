@@ -211,8 +211,7 @@ describe('konfigurasi dashboard', () => {
 describe('proses dashboard (API + worker + dashboard sungguhan)', () => {
   async function withDashboard(t, overrides = {}, opts = {}) {
     const s = await setup(t, overrides, opts);
-    const dash = await startDashboard({ ...s.env, API_URL: s.api.url });
-    t.after(() => dash.stop());
+    const dash = s.track(await startDashboard({ ...s.env, API_URL: s.api.url }));
     const dget = async (path, headers = {}) => {
       const r = await fetch(dash.url + path, { headers });
       const text = await r.text();
