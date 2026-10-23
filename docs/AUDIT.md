@@ -79,3 +79,19 @@ Suite diulang berkali-kali, bukan hanya sekali lulus:
 - 10 run di kode final: 10/10 lulus (58/58).
 
 Test bergantung pada timing (lease 600 ms). Di mesin yang jauh lebih sibuk, kegagalan sesekali masih mungkin. Catat output-nya sebagai temuan, jangan diabaikan.
+
+## Temuan keamanan setelah capstone (fase dashboard, 2026-10-23)
+
+Bagian ini ditambahkan setelah capstone. Tabel di atas tidak diubah.
+
+| ID | Temuan | Bukti | Perbaikan | Test |
+|---|---|---|---|---|
+| S-1 (P1) | **CSRF lintas situs ke `POST /jobs`.** API tidak memeriksa `Content-Type`. Browser boleh mengirim POST lintas situs tanpa preflight CORS untuk `text/plain`, `application/x-www-form-urlencoded`, dan `multipart/form-data`. Halaman web mana pun yang dibuka di mesin yang sama bisa membuat job, bahkan tanpa JavaScript lewat `<form enctype="text/plain">` (trik duplicate key `{"type":"x=","type":"order_report",...}` membuat body tetap JSON valid). Dampak: antrean bisa diisi sampai `MAX_PENDING` (user sah mendapat 429), dan saat `ALLOW_FAULT_INJECTION=1` situs lain bisa membuat worker crash (`crashAfterWriteTimes`) atau hang. Penyerang **tidak** bisa membaca respons (tanpa header CORS). | DIREPRODUKSI di commit `ae864a8`: `curl` lintas origin `text/plain` → 202. Chromium sungguhan dari `http://localhost:4801` ke `http://127.0.0.1:<port>/jobs`: `fetch(..., {mode:'no-cors'})` → 202, form `text/plain` → 202, `fetch` dengan `application/json` diblokir browser (preflight `OPTIONS` 405 tanpa header CORS). Hasil: 2 job dibuat oleh halaman lintas situs. | `POST /jobs` wajib `Content-Type: application/json` (parameter seperti `charset` boleh), selain itu `415 UNSUPPORTED_MEDIA_TYPE`. Setiap request lintas situs dari browser jadi wajib preflight, dan API tidak pernah menyetujui preflight. Dicek **setelah** body dibaca dan setelah batas 413, supaya perilaku 408/413/`client_aborted` yang sudah diuji tidak berubah; tetap sebelum JSON di-parse, validasi payload, dan idempotency. Tidak ada perubahan arsitektur, state machine, atau semantik reliability. | `test/security.test.js` (5 test; 3 gagal di kode lama, lulus di kode baru). Browser: `npm run csrf-check` (manual, tanpa dependency) melaporkan 2 job dibuat di kode lama dan 0 di kode baru |
+
+Perubahan perilaku yang terlihat client: request tanpa `Content-Type: application/json` (mis. `curl -d '...'` tanpa `-H`) sekarang 415. Semua client di repo (test, `scripts/experiment.js`, dashboard, contoh di README/RUNBOOK) sudah mengirim header itu.
+
+Risiko yang tersisa (tidak diperbaiki di S-1):
+- **DNS rebinding ke API.** API tidak memeriksa header `Host`. Domain penyerang yang di-rebind ke `127.0.0.1` menjadi *same-origin* di mata browser, sehingga bisa mengirim JSON dan membaca respons (`GET /jobs/:id`, `/metrics`). Dashboard sudah memeriksa `Host`; API belum. Perbaikan yang diusulkan: allowlist `Host` (loopback + `HOST`), terpisah dari S-1 karena mengubah perilaku untuk semua route.
+- **Tanpa autentikasi.** Proses lokal lain (bukan browser) tetap bisa membuat job. Disengaja (ADR-001), dibatasi bind loopback.
+- **Bergantung pada aturan CORS browser.** Proteksi ini benar untuk browser yang mengikuti Fetch standard (Chromium, Firefox, Safari modern). Klien non-browser tidak dibatasi CORS sama sekali.
+

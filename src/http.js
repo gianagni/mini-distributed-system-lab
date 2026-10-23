@@ -35,6 +35,11 @@ function payloadTooLarge() {
   return new HttpError(413, 'PAYLOAD_TOO_LARGE', `Body maksimal ${MAX_BODY_BYTES} byte`, { connection: 'close' });
 }
 
+/** `application/json`, boleh dengan parameter (`; charset=utf-8`), tanpa membedakan huruf besar/kecil. */
+export function isJsonContentType(value) {
+  return typeof value === 'string' && /^\s*application\/json\s*(;|$)/i.test(value);
+}
+
 async function readJson(req) {
   const declared = Number(req.headers['content-length']);
   if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) throw payloadTooLarge();
@@ -50,6 +55,14 @@ async function readJson(req) {
     if (err instanceof HttpError) throw err;
     // Stream request error di sini berarti koneksi putus di tengah body.
     throw new ClientAbortedError();
+  }
+  // CSRF (lihat AUDIT S-1): browser boleh mengirim POST lintas situs tanpa preflight CORS hanya
+  // untuk text/plain, form-urlencoded, dan multipart. Dengan mewajibkan application/json, setiap
+  // request lintas situs dari browser harus lewat preflight OPTIONS, dan API tidak pernah
+  // menyetujuinya (tanpa header CORS). Dicek SETELAH body dibaca supaya perilaku 408/413/client
+  // aborted yang sudah diuji tidak berubah; tetap sebelum JSON di-parse dan job dibuat.
+  if (!isJsonContentType(req.headers['content-type'])) {
+    throw new HttpError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Content-Type harus application/json');
   }
   if (size === 0) throw new ValidationError('Body kosong');
   try {

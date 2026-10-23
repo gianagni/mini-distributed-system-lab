@@ -28,9 +28,9 @@ Exit code 0 berarti siap. Kalau ada `GAGAL`, lihat bagian Troubleshooting.
 ## 2. Menjalankan tests
 
 ```bash
-npm test                      # 71 test (58 capstone + 13 dashboard), sekitar 30 detik
+npm test                      # 76 test (58 capstone + 13 dashboard + 5 security), sekitar 30 detik
 ```
-Hasil yang diharapkan ada di baris akhir: `# pass 71` dan `# fail 0`. (Run `nanad` yang dilaporkan 58/58 terjadi sebelum test dashboard ditambahkan.) Untuk memeriksa flakiness:
+Hasil yang diharapkan ada di baris akhir: `# pass 76` dan `# fail 0`. Di Windows, satu test (`worker zombie (SIGSTOP...)`) di-skip karena SIGSTOP tidak ada; hasilnya `# pass 75`, `# skipped 1`. (Run `nanad` yang dilaporkan 58/58 terjadi sebelum test dashboard ditambahkan.) Untuk memeriksa flakiness:
 ```bash
 for i in 1 2 3 4 5; do npm test 2>&1 | grep -E '^# (pass|fail)' | tr '\n' ' '; echo; done
 ```
@@ -134,6 +134,7 @@ rm -rf logs run
 | Log `worker_loop_error` / `job_state_write_failed` dengan `database is locked` | Proses lain memegang transaksi tulis lama (mis. `sqlite3` CLI) | Tutup proses itu. Job pulih otomatis lewat lease |
 | Log `warn claim_busy` sesekali | Banyak worker berebut lock dengan polling cepat | Normal di bawah beban. Kalau terus-menerus: kurangi worker atau naikkan `POLL_MS` |
 | Job `FAILED` `STORAGE` | `REPORT_DIR` tidak bisa ditulis, path salah, atau disk penuh | `npm run doctor`, `df -h .` |
+| `415 UNSUPPORTED_MEDIA_TYPE` | Client tidak mengirim `Content-Type: application/json` (mis. `curl -d` tanpa `-H`) | Tambahkan `-H 'content-type: application/json'`. Disengaja: proteksi CSRF (AUDIT S-1) |
 | `429 QUEUE_FULL` | Antrean melebihi `MAX_PENDING` | Tambah worker atau tunggu. Naikkan `MAX_PENDING` hanya dengan alasan |
 | `npm run check` exit 1 | Invariant dilanggar (bug atau file diubah manual) | Salin `data/` untuk investigasi **sebelum** `clean`, lalu catat temuan |
 | `npm run check` warning `orphan_report` / `temp_file_left` | File dari attempt yang crash | Diizinkan desain. File itu bukan hasil sah |
@@ -146,7 +147,7 @@ rm -rf logs run
 | `npm test` | Dilaporkan 58/58 di `nanad`. Log tidak dilampirkan |
 | `npm run experiment` (3 repetisi) | Ada di `docs/evidence/nanad/`. Markdown = render JSON, konsisten, SHA-256 ZIP cocok (`COMPARISON.md`) |
 | Langkah 3-7 (background, job manual, stop, clean) | Belum dilaporkan dari `nanad` |
-| Dashboard (§10): `npm test` 71/71, `npm run lab`, skenario browser | Hanya di sandbox Linux (Node 22.22.0, Chromium headless). **Belum** dijalankan di `nanad` maupun Windows |
+| Dashboard (§10) + S-1: `npm test` 76/76, `npm run lab`, `npm run csrf-check`, skenario browser | Hanya di sandbox Linux (Node 22.22.0, Chromium headless). **Belum** dijalankan di `nanad` maupun Windows; langkahnya di `docs/VALIDATION-PLAN.md` |
 | Lokasi storage eksperimen | Eksperimen memakai `os.tmpdir()`. Jalankan `df -T /tmp "$(pwd)/data"` untuk tahu apakah `/tmp` adalah tmpfs. Ini menentukan apakah angka throughput mewakili disk persisten |
 
 ## 10. Dashboard (Reliability Lab)

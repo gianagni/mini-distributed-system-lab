@@ -11,7 +11,7 @@ Capstone Bab 10 modul *Inside Modern AI Systems*: sistem kecil untuk job asynchr
 
 ```bash
 npm run doctor       # cek Node, node:sqlite, direktori data, port
-npm test             # 71 test (58 capstone + 13 dashboard), sekitar 30 detik
+npm test             # 76 test (58 capstone + 13 dashboard + 5 security), sekitar 30 detik
 npm run lab          # API + 2 worker + dashboard di http://127.0.0.1:3100 (Ctrl+C untuk berhenti)
 npm run experiment   # ablation + drain capacity, sekitar 5 menit (EXP_REPS=1 untuk sekitar 2 menit)
 ```
@@ -30,18 +30,19 @@ npm run experiment   # ablation + drain capacity, sekitar 5 menit (EXP_REPS=1 un
 | [docs/EXPERIMENT-RESULTS.md](docs/EXPERIMENT-RESULTS.md) | Hasil eksperimen sandbox (+ `experiment-results.json` mentah) |
 | [docs/DISCOVERY.md](docs/DISCOVERY.md) | Problem, user, rules, data, MVP |
 | [docs/RUNBOOK.md](docs/RUNBOOK.md) | Menjalankan di InstaBox, Windows, dan dashboard (§10) |
+| [docs/VALIDATION-PLAN.md](docs/VALIDATION-PLAN.md) | Langkah validasi branch dashboard di Windows dan InstaBox `nanad` |
 | [docs/REFERENCE-RESEARCH.md](docs/REFERENCE-RESEARCH.md) | Riset Bull Board / Inngest / Chaos Mesh: lisensi, feature mapping, keputusan arsitektur dashboard |
 
 ## API
 
 | Method | Path | Hasil |
 |---|---|---|
-| POST | `/jobs` | 202 job baru · 200 replay `Idempotency-Key` · 400 validasi/URL · 409 key dipakai untuk isi berbeda · 413 body > 16 KB · 408 request lambat · 429 antrean penuh (`Retry-After`) |
+| POST | `/jobs` | 202 job baru · 200 replay `Idempotency-Key` · 400 validasi/URL · 409 key dipakai untuk isi berbeda · 413 body > 16 KB · 415 bukan `Content-Type: application/json` · 408 request lambat · 429 antrean penuh (`Retry-After`) |
 | GET | `/jobs/:id` | Job + `result` (`reportFile`, `sha256`, `bytes`) + riwayat event per attempt · 404 |
 | GET | `/metrics` | Status job, counter, error class, histogram attempts, p50/p95/p99, health antrean |
 | GET | `/healthz` | `{"ok":true}` kalau DB bisa diakses |
 
-Body POST: `{"type":"order_report","payload":{"orderCount":1..200000,"seed":0..2^31-1}}`. Field `payload.simulate` (`delayMs`, `failTransientTimes`, `failPermanent`, `hang`, `crashAfterWriteTimes`) untuk fault injection, hanya diterima kalau `ALLOW_FAULT_INJECTION=1` di API **dan** worker, dan hanya di HOST loopback.
+Body POST: `{"type":"order_report","payload":{"orderCount":1..200000,"seed":0..2^31-1}}` dengan header wajib `Content-Type: application/json` (proteksi CSRF, [AUDIT S-1](docs/AUDIT.md#temuan-keamanan-setelah-capstone-fase-dashboard-2026-10-23)). Field `payload.simulate` (`delayMs`, `failTransientTimes`, `failPermanent`, `hang`, `crashAfterWriteTimes`) untuk fault injection, hanya diterima kalau `ALLOW_FAULT_INJECTION=1` di API **dan** worker, dan hanya di HOST loopback.
 
 Contoh:
 ```bash
@@ -55,7 +56,7 @@ npm run check                     # invariant database vs file laporan
 
 ## Dashboard (Reliability Lab)
 
-Proses terpisah (`npm run dashboard`, default `127.0.0.1:3100`) yang membaca SQLite **read-only** dan meneruskan pembuatan job ke `POST /jobs` milik API. API tidak diubah. Alasan desain dan lisensi referensi: [REFERENCE-RESEARCH.md](docs/REFERENCE-RESEARCH.md).
+Proses terpisah (`npm run dashboard`, default `127.0.0.1:3100`) yang membaca SQLite **read-only** dan meneruskan pembuatan job ke `POST /jobs` milik API. Satu-satunya perubahan di API adalah validasi `Content-Type` (AUDIT S-1). Alasan desain dan lisensi referensi: [REFERENCE-RESEARCH.md](docs/REFERENCE-RESEARCH.md).
 
 - **Overview:** status job, kesehatan antrean (siap vs backoff, lease kedaluwarsa), invariant sukses ganda, latency p50/p95/p99, job RUNNING dengan sisa lease, worker yang terlihat di event.
 - **Jobs:** filter status / error class / "attempt > 1", pagination.
@@ -120,8 +121,8 @@ src/backoff.js      backoff + jitter           src/config.js       env + validas
 src/dashboard.js    entrypoint dashboard       src/dashboard-http.js route, keamanan, proxy
 src/readmodel.js    query read-only            src/timeline.js     timeline dari job_events (murni)
 dashboard/          UI (HTML/CSS/ES modules, tanpa build): app.js, lib.js, views/*.js
-scripts/            lab, experiment, compare-results, check-consistency, doctor, clean, lib/harness
-test/               unit, integration (34 test asli), storage, reliability (24 test baru), dashboard (13), helpers
+scripts/            lab, csrf-check, experiment, compare-results, check-consistency, doctor, clean, lib/harness
+test/               unit, integration (34 test asli), storage, reliability (24 test baru), dashboard (13), security (5), helpers
 ```
 
 ## Known limitations
@@ -135,6 +136,6 @@ Ringkasan, detail di [AUDIT.md](docs/AUDIT.md) dan [ADR-001](docs/ADR-001-archit
 - Throughput sangat bergantung pada biaya fsync storage (`nanad` 6-12x lebih cepat dari sandbox untuk operasi storage); jangan dipindahkan antar mesin tanpa diukur ulang.
 - Lock SQLite memblokir event loop proses yang menunggu (dibatasi `BUSY_TIMEOUT_MS`).
 - Tanpa autentikasi, tanpa retensi data, metrik dihitung O(jumlah job). Dashboard yang polling menjalankan query O(n) itu setiap interval.
-- `POST /jobs` di API tidak memeriksa `Content-Type`, sehingga halaman web lain di browser yang sama bisa membuat job (CSRF, lihat REFERENCE-RESEARCH §2). Dashboard memproteksi dirinya sendiri; API belum diubah.
+- CSRF lewat `POST /jobs` sudah ditutup (AUDIT S-1, cek dengan `npm run csrf-check`). Yang tersisa: API belum memeriksa header `Host`, jadi DNS rebinding masih mungkin (dashboard sudah memeriksa `Host`).
 - Dashboard: worker idle tidak terlihat (tidak ada registry worker), dan waktu kematian worker hanya diketahui sebagai waktu deteksi (`lease_expired`).
 - Eksperimen dan test dijalankan di InstaBox `nanad` oleh pemilik proyek (hasil di `docs/evidence/nanad/`, diverifikasi di `COMPARISON.md`). Log test `nanad` tidak dilampirkan.

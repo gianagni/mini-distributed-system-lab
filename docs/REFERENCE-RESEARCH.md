@@ -57,7 +57,7 @@ Loop polling → `claimNext` (BEGIN IMMEDIATE) → heartbeat `extendLease` tiap 
 1. **Retry history sudah lengkap di `job_events`.** Waktu tunggu antrean, durasi setiap attempt, backoff, dan penolakan fencing bisa diturunkan dari event asli. Tidak perlu tabel baru.
 2. **Backoff hanya ada di teks pesan.** `retry_scheduled.message` diakhiri `(retry dalam X ms)`. Dashboard mem-parse ini; formatnya dikunci test baru supaya perubahan di `store.js` langsung ketahuan.
 3. **Waktu kematian worker tidak diketahui.** `lease_expired.at` adalah waktu *deteksi* (saat worker lain claim). UI wajib menyebut ini, bukan menggambarnya sebagai waktu mati.
-4. **CSRF di API yang sudah ada (temuan, tidak diubah).** `POST /jobs` tidak memeriksa `Content-Type`. Halaman web mana pun yang dibuka di browser mesin yang sama bisa mengirim `fetch('http://127.0.0.1:3000/jobs', {method:'POST', mode:'no-cors', body:'{"type":"order_report"}'})` (simple request `text/plain`, tanpa preflight) dan job akan dibuat. Dampak terbatas (job dummy, dibatasi `MAX_PENDING`), tapi nyata. Perbaikan yang diusulkan: tolak `Content-Type` selain `application/json` (415). **Tidak diterapkan** di branch ini karena mengubah perilaku API yang sedang dinilai; perlu keputusan pemilik. Dashboard sendiri sudah menerapkan proteksi ini (lihat §6).
+4. **CSRF di API yang sudah ada. Status: DIPERBAIKI setelah review pemilik, lihat [AUDIT S-1](AUDIT.md#temuan-keamanan-setelah-capstone-fase-dashboard-2026-10-23).** Teks asli temuan: `POST /jobs` tidak memeriksa `Content-Type`. Halaman web mana pun yang dibuka di browser mesin yang sama bisa mengirim `fetch('http://127.0.0.1:3000/jobs', {method:'POST', mode:'no-cors', body:'{"type":"order_report"}'})` (simple request `text/plain`, tanpa preflight) dan job akan dibuat. Dampak terbatas (job dummy, dibatasi `MAX_PENDING`), tapi nyata. Perbaikan yang diusulkan: tolak `Content-Type` selain `application/json` (415). **Tidak diterapkan** di branch ini karena mengubah perilaku API yang sedang dinilai; perlu keputusan pemilik. Dashboard sendiri sudah menerapkan proteksi ini (lihat §6).
 5. Metrik O(n) per request. Dashboard yang polling tiap 2 detik menambah beban baca ini; dapat diterima di skala lab, dicatat sebagai batas.
 
 ## 3. Bedah Bull Board: pola queue monitoring
@@ -152,7 +152,7 @@ browser ──► dashboard (127.0.0.1:3100)
 ```
 
 Alasan:
-- **API tidak berubah sama sekali.** Semantik dan 58 test lama tidak tersentuh. `GET /jobs` tetap 405.
+- **Arsitektur dan semantik API tidak berubah.** 58 test lama tidak tersentuh. `GET /jobs` tetap 405. (Satu perubahan menyusul setelah review: validasi `Content-Type` di `POST /jobs`, AUDIT S-1.)
 - **Read-only ditegakkan SQLite.** Koneksi dashboard `readOnly: true`; bug di dashboard tidak bisa mengubah state job. WAL: pembaca tidak memblokir penulis.
 - **Isolasi kegagalan**, sama seperti alasan memisah worker (ADR-001): dashboard crash atau lambat (metrik O(n)) tidak mengganggu API.
 - **Satu jalur tulis.** Pembuatan job tetap lewat API, jadi tidak ada logika validasi ganda.
@@ -178,8 +178,8 @@ Biaya: satu proses lagi. Dimitigasi `npm run lab`.
 
 | Gate | Hasil | Bukti |
 |---|---|---|
-| Regression test lama tetap lulus | 58 test lama tidak diubah; `npm test` **71/71** (58 + 13 baru), diulang 3x berturut-turut tanpa gagal | `test/*.test.js` |
-| API tidak berubah | `src/http.js`, `store.js`, `processor.js`, `worker.js`, `db.js` tidak disentuh. `GET /jobs` tetap 405 (dicek ulang di test dashboard) | `git diff main --stat` |
+| Regression test lama tetap lulus | 58 test lama tidak diubah; `npm test` **76/76** (58 + 13 dashboard + 5 security), diulang 3x berturut-turut tanpa gagal | `test/*.test.js` |
+| API tidak berubah (kecuali S-1) | `store.js`, `processor.js`, `worker.js`, `db.js`, `task.js`, `metrics.js` tidak disentuh. `src/http.js` hanya mendapat validasi `Content-Type` (AUDIT S-1). `GET /jobs` tetap 405 | `git diff main --stat` |
 | Frontend terhubung ke backend nyata | Test integrasi: job dibuat lewat proxy dashboard, diproses worker sungguhan, event di `/api/jobs/:id` identik dengan `GET /jobs/:id` milik API | `test/dashboard.test.js` |
 | User bisa membuat job dari browser | Chromium headless (Playwright global, bukan dependency repo): form → 202 → halaman detail | skenario browser, lihat bawah |
 | Perubahan status teramati | Test: dashboard melihat ≥ 2 status berbeda untuk satu job; browser: PENDING → RUNNING → SUCCEEDED/FAILED | idem |
@@ -195,5 +195,12 @@ transient 2× (sukses di attempt 3, backoff terlihat), lambat 5 s + `kill -9` wo
 Klaim RUNBOOK yang diverifikasi terpisah: `MAX_PENDING=5 --workers 0`, 10 request → 202×5, 429×5. `--workers 4`, 50 request → 50 SUCCEEDED tersebar ke 4 worker (18/11/11/10), sukses ganda 0, `npm run check` 0 violation.
 
 Penanda fencing (`stale_*_rejected`) sulit dipicu lewat UI (heartbeat biasanya mendeteksi lease hilang lebih dulu, lihat AUDIT "Worker zombie"). Rendering-nya diperiksa visual dengan database sementara di luar repo yang dibuat lewat fungsi `store.js` asli, dan logikanya dikunci unit test.
+
+### Setelah perbaikan S-1 (CSRF)
+
+- Reproduksi di `ae864a8`: halaman di `http://localhost:4801` (Chromium sungguhan) membuat 2 job di API `127.0.0.1` lewat `fetch` no-cors dan `<form enctype="text/plain">`. Setelah perbaikan: 0 job, kedua request 415, `fetch` JSON tetap diblokir preflight. Alat `npm run csrf-check` divalidasi dua arah (GAGAL di kode lama, LULUS di kode baru).
+- `test/security.test.js`: 5 test; 3 gagal di `http.js` lama, semua lulus di kode baru.
+- `npm test` 76/76. Dari 15 run penuh, 14 lulus dan **1 gagal satu test yang tidak teridentifikasi**: run itu hanya menyimpan baris ringkasan, dan berjalan bersamaan dengan proses test lain. Tidak terulang di 12 run berikutnya (5 normal, 4 dengan proses test paralel, 3 dengan 4 loop CPU penuh). Dicatat apa adanya, bukan dianggap flake. Validasi di mesin lain wajib menyimpan log penuh (`docs/VALIDATION-PLAN.md`).
+- Browser smoke ulang di kode final: semua skenario di atas lulus, form dashboard tetap 202, `npm run check` 0 violation. Klaim di VALIDATION-PLAN (iframe 415, "Polling mati", "⚠ Gagal sejak" saat lab berhenti) dicek di Chromium.
 
 **Belum diverifikasi:** Windows dan InstaBox `nanad` (dashboard, `npm run lab`, 13 test baru). Catatan Windows di RUNBOOK berdasarkan perilaku Node yang terdokumentasi, bukan percobaan.
