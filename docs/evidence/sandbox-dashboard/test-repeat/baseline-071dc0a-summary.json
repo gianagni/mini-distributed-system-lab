@@ -1,0 +1,792 @@
+{
+  "node": "v22.22.0",
+  "platform": "linux 6.18.44-fc-v153",
+  "cpus": 4,
+  "runs": 30,
+  "testTimeout": 120000,
+  "runTimeout": 600000,
+  "failedRuns": [
+    22
+  ],
+  "hungRuns": [],
+  "failuresByTest": {
+    "buat job lewat dashboard, status berubah, timeline memakai event yang sama dengan API": [
+      22
+    ]
+  },
+  "results": [
+    {
+      "run": 1,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26074,
+      "loadavgAtStart": [
+        1.23,
+        0.47,
+        0.16
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26032.774972
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-001.log"
+    },
+    {
+      "run": 2,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26357,
+      "loadavgAtStart": [
+        0.95,
+        0.46,
+        0.17
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26308.632762
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-002.log"
+    },
+    {
+      "run": 3,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 25948,
+      "loadavgAtStart": [
+        0.82,
+        0.47,
+        0.18
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 25905.368801
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-003.log"
+    },
+    {
+      "run": 4,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 25976,
+      "loadavgAtStart": [
+        0.86,
+        0.51,
+        0.2
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 25936.941015
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-004.log"
+    },
+    {
+      "run": 5,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26427,
+      "loadavgAtStart": [
+        0.7,
+        0.5,
+        0.2
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26385.28197
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-005.log"
+    },
+    {
+      "run": 6,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 25772,
+      "loadavgAtStart": [
+        0.73,
+        0.52,
+        0.22
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 25728.3245
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-006.log"
+    },
+    {
+      "run": 7,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26103,
+      "loadavgAtStart": [
+        0.48,
+        0.48,
+        0.21
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26065.434447
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-007.log"
+    },
+    {
+      "run": 8,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 25532,
+      "loadavgAtStart": [
+        0.58,
+        0.51,
+        0.23
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 25490.997226
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-008.log"
+    },
+    {
+      "run": 9,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26340,
+      "loadavgAtStart": [
+        0.58,
+        0.51,
+        0.24
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26295.757648
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-009.log"
+    },
+    {
+      "run": 10,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26193,
+      "loadavgAtStart": [
+        0.68,
+        0.54,
+        0.26
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26154.583184
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-010.log"
+    },
+    {
+      "run": 11,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 25830,
+      "loadavgAtStart": [
+        0.84,
+        0.6,
+        0.28
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 25790.415796
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-011.log"
+    },
+    {
+      "run": 12,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 25444,
+      "loadavgAtStart": [
+        0.75,
+        0.6,
+        0.29
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 25406.323985
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-012.log"
+    },
+    {
+      "run": 13,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26172,
+      "loadavgAtStart": [
+        1.04,
+        0.68,
+        0.33
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26135.986738
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-013.log"
+    },
+    {
+      "run": 14,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26087,
+      "loadavgAtStart": [
+        0.9,
+        0.67,
+        0.33
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26048.367547
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-014.log"
+    },
+    {
+      "run": 15,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26098,
+      "loadavgAtStart": [
+        0.84,
+        0.67,
+        0.35
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26057.653378
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-015.log"
+    },
+    {
+      "run": 16,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26204,
+      "loadavgAtStart": [
+        0.89,
+        0.7,
+        0.36
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26160.759081
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-016.log"
+    },
+    {
+      "run": 17,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26008,
+      "loadavgAtStart": [
+        0.78,
+        0.69,
+        0.37
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 25961.406331
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-017.log"
+    },
+    {
+      "run": 18,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26365,
+      "loadavgAtStart": [
+        0.86,
+        0.72,
+        0.39
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26326.639949
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-018.log"
+    },
+    {
+      "run": 19,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26079,
+      "loadavgAtStart": [
+        0.73,
+        0.69,
+        0.39
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26027.384553
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-019.log"
+    },
+    {
+      "run": 20,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26313,
+      "loadavgAtStart": [
+        0.48,
+        0.64,
+        0.38
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26266.767475
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-020.log"
+    },
+    {
+      "run": 21,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 25864,
+      "loadavgAtStart": [
+        0.45,
+        0.62,
+        0.38
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 25822.608139
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-021.log"
+    },
+    {
+      "run": 22,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26235,
+      "loadavgAtStart": [
+        0.72,
+        0.66,
+        0.4
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 75,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26195.165019
+      },
+      "failures": [
+        {
+          "name": "buat job lewat dashboard, status berubah, timeline memakai event yang sama dengan API",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "wt-baseline/test/dashboard.test.js:237:3",
+          "error": "dashboard harus melihat lebih dari satu status, dapat SUCCEEDED"
+        },
+        {
+          "name": "proses dashboard (API + worker + dashboard sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "wt-baseline/test/dashboard.test.js:211:1",
+          "error": "1 subtest failed"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "buat job lewat dashboard, status berubah, timeline memakai event yang sama dengan API",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "wt-baseline/test/dashboard.test.js:237:3",
+          "error": "dashboard harus melihat lebih dari satu status, dapat SUCCEEDED"
+        }
+      ],
+      "log": "./run-022.log"
+    },
+    {
+      "run": 23,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26791,
+      "loadavgAtStart": [
+        0.56,
+        0.63,
+        0.39
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26752.745141
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-023.log"
+    },
+    {
+      "run": 24,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26766,
+      "loadavgAtStart": [
+        0.5,
+        0.61,
+        0.39
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26722.062526
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-024.log"
+    },
+    {
+      "run": 25,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 25816,
+      "loadavgAtStart": [
+        0.78,
+        0.67,
+        0.42
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 25760.716179
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-025.log"
+    },
+    {
+      "run": 26,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 25825,
+      "loadavgAtStart": [
+        0.83,
+        0.7,
+        0.43
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 25785.427998
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-026.log"
+    },
+    {
+      "run": 27,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26193,
+      "loadavgAtStart": [
+        0.8,
+        0.71,
+        0.45
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26152.858114
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-027.log"
+    },
+    {
+      "run": 28,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26001,
+      "loadavgAtStart": [
+        0.6,
+        0.67,
+        0.44
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 25953.80477
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-028.log"
+    },
+    {
+      "run": 29,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 25997,
+      "loadavgAtStart": [
+        0.59,
+        0.66,
+        0.45
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 25947.16402
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-029.log"
+    },
+    {
+      "run": 30,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 26066,
+      "loadavgAtStart": [
+        0.52,
+        0.64,
+        0.45
+      ],
+      "summary": {
+        "tests": 76,
+        "suites": 17,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 26025.247317
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-030.log"
+    }
+  ]
+}

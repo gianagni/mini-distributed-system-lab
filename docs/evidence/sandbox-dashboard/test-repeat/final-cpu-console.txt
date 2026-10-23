@@ -1,0 +1,15 @@
+Node v22.22.0, linux 6.18.44-fc-v153, 4 CPU
+10 run, test-timeout 120000 ms, run-timeout 600000 ms, log: repeat-final-cpu
+run   1: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 35.7 s load=0.45
+run   2: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 36.1 s load=2.47
+run   3: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 36.1 s load=3.68
+run   4: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 35.6 s load=4.19
+run   5: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 36.0 s load=4.69
+run   6: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 35.9 s load=4.98
+run   7: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 36.9 s load=5.19
+run   8: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 36.0 s load=4.93
+run   9: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 35.7 s load=5.06
+run  10: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 36.2 s load=5.11
+
+Hasil: 10/10 run lulus. Run gagal: -
+Ringkasan: repeat-final-cpu/summary.json

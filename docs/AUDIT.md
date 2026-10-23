@@ -90,8 +90,41 @@ Bagian ini ditambahkan setelah capstone. Tabel di atas tidak diubah.
 
 Perubahan perilaku yang terlihat client: request tanpa `Content-Type: application/json` (mis. `curl -d '...'` tanpa `-H`) sekarang 415. Semua client di repo (test, `scripts/experiment.js`, dashboard, contoh di README/RUNBOOK) sudah mengirim header itu.
 
-Risiko yang tersisa (tidak diperbaiki di S-1):
-- **DNS rebinding ke API.** API tidak memeriksa header `Host`. Domain penyerang yang di-rebind ke `127.0.0.1` menjadi *same-origin* di mata browser, sehingga bisa mengirim JSON dan membaca respons (`GET /jobs/:id`, `/metrics`). Dashboard sudah memeriksa `Host`; API belum. Perbaikan yang diusulkan: allowlist `Host` (loopback + `HOST`), terpisah dari S-1 karena mengubah perilaku untuk semua route.
+Risiko yang tersisa setelah S-1:
+- ~~**DNS rebinding ke API.**~~ Diperbaiki di S-2 (di bawah).
 - **Tanpa autentikasi.** Proses lokal lain (bukan browser) tetap bisa membuat job. Disengaja (ADR-001), dibatasi bind loopback.
 - **Bergantung pada aturan CORS browser.** Proteksi ini benar untuk browser yang mengikuti Fetch standard (Chromium, Firefox, Safari modern). Klien non-browser tidak dibatasi CORS sama sekali.
+
+| ID | Temuan | Bukti | Perbaikan | Test |
+|---|---|---|---|---|
+| S-2 (P1) | **DNS rebinding ke API dan dashboard.** Domain penyerang yang di-resolve ulang ke `127.0.0.1` membuat halamannya *same-origin* dengan server lokal, sehingga bisa **membaca** respons dan mengirim JSON tanpa preflight. Satu-satunya jejak di server adalah header `Host`. (1) API tidak memeriksa `Host` sama sekali. (2) Dashboard memeriksa `Host`, tetapi `ALLOW_REMOTE=1` mematikan pemeriksaan itu sepenuhnya (efektif wildcard), bahkan dengan bind loopback. (3) Regex `Content-Type` dashboard (`/^application\/json\b/`) menerima `application/json-seq` (tidak bisa dieksploitasi karena tetap kena preflight, tapi tidak konsisten dengan API). | DIREPRODUKSI di `071dc0a`, lingkungan lokal terisolasi. `curl` dengan `Host: attacker.test`: API `/metrics` 200, `POST /jobs` 202; dashboard default 403; dashboard `ALLOW_REMOTE=1` 200. Chromium 141 dengan `rebind.test` dipetakan ke 127.0.0.1 (keadaan setelah rebind; HTML penyerang disajikan untuk load pertama): dengan Private Network Access Chromium **aktif**, request diblokir browser; dengan PNA **dimatikan** (meniru Firefox/Safari/Chrome lama) halaman membaca seluruh `/metrics` (200) dan membuat job (202) di API, serta membaca `/api/overview` dan membuat job lewat dashboard `ALLOW_REMOTE=1`. Halaman penyerang membuat 2 job (job ketiga di database berasal dari uji `curl`). | `src/hostguard.js`, dipakai API dan dashboard. **Allowlist `Host` ketat**: `localhost`, `127.0.0.1`, `[::1]` dengan port yang sedang didengar, plus alamat bind spesifik (bukan `0.0.0.0`/`::`), plus `ALLOWED_HOSTS` eksplisit (`nama[:port]`, dipisah koma; wildcard/skema/path ditolak saat start). Port 80 juga menerima nama tanpa port. Dicek paling awal untuk semua route, termasuk GET (403 `BAD_HOST`, `connection: close`, log `host_rejected`). **Origin** untuk `POST /jobs` dan `POST /api/jobs`: kalau `Origin` atau `Sec-Fetch-Site` dikirim (browser), harus same-origin; kalau tidak ada (curl, `fetch` Node, proxy dashboard) diterima (403 `CROSS_ORIGIN`). Di API dicek setelah gerbang 415 S-1, jadi urutan 408/413/415 lama tidak berubah. `ALLOW_REMOTE` sekarang hanya mengizinkan bind non-loopback, tidak lagi mematikan pemeriksaan. Dashboard memakai `isJsonContentType` yang sama dengan API. | `test/security.test.js` (+9 test: 4 unit, 5 proses sungguhan termasuk SSH forward lewat forwarder TCP). 5 test integrasi gagal di server lama, lulus di server baru. Manual: `npm run host-check` (5 GAGAL di kode lama, semua LULUS di kode baru) |
+
+Dampak S-2 pada penggunaan sah:
+- Akses lewat `127.0.0.1`/`localhost` dengan port yang didengar: tidak berubah.
+- SSH tunnel dengan **port lokal sama** (`ssh -L 3100:127.0.0.1:3100`): tidak berubah. **Port lokal berbeda** (`-L 8100:127.0.0.1:3100`): browser mengirim `Host: 127.0.0.1:8100`, jadi wajib `ALLOWED_HOSTS=127.0.0.1:8100,localhost:8100` di proses tujuan. Ini disengaja: port tidak ditebak.
+- Bind non-loopback (`HOST=10.0.0.5`, `ALLOW_REMOTE=1`): `10.0.0.5:<port>` otomatis diizinkan. Dengan `HOST=0.0.0.0`, nama yang dipakai client harus ditulis di `ALLOWED_HOSTS`.
+
+Batas S-2 (tidak diklaim):
+- Proteksi ini untuk serangan lewat browser. Proses lokal non-browser bisa mengirim `Host` apa pun; itu di luar model ancaman (tanpa autentikasi, disengaja, ADR-001).
+- Rebinding sungguhan lewat DNS publik tidak diuji (butuh DNS eksternal). Yang diuji adalah keadaan browser setelah rebind, yang menentukan header yang sampai ke server.
+- Chromium dengan Private Network Access sudah memblokir pola ini di browser; perbaikan server tetap dibutuhkan untuk browser tanpa fitur itu.
+
+### Perubahan pada test lama (S-2)
+
+Allowlist `Host` membuat 4 test lama di `test/reliability.test.js` gagal karena request mentahnya memakai nilai pengisi `Host: x` (5 request). Isi test tidak berhubungan dengan `Host`: URL malformed, client putus di tengah body, client putus sebelum respons, body lambat, dan `Content-Length` berlebih. Perubahan: **hanya nilai header** `Host: x` diganti host API sungguhan (`new URL(s.api.url).host`). Tidak ada assertion, alur, atau timing yang diubah (`git diff` menunjukkan 0 baris assertion berubah). Alternatif "izinkan `Host: x`" ditolak karena berarti melemahkan pemeriksaan supaya test lulus. Perilaku baru untuk `Host: x` sendiri dikunci test baru (`perubahan disengaja pada perilaku lama`).
+
+## Kegagalan test yang belum terjelaskan (U-1)
+
+**Kejadian awal (fase S-1):** 1 dari 15 run penuh `npm test` gagal di satu test. Nama test tidak diketahui karena run itu hanya menyimpan baris ringkasan, dan berjalan bersamaan dengan proses test lain.
+
+**Investigasi (bukti di `docs/evidence/sandbox-dashboard/test-repeat/`):**
+1. `npm run test:repeat` dibuat: log TAP lengkap per run, exit code, sinyal, durasi, load average, nama test gagal + `failureType`. Timeout ditambahkan supaya hang terdeteksi: `--test-timeout=120000` (di Node 22 berlaku per file test; file terlama 16 s normal / 19 s dengan CPU penuh) di `npm test` dan runner, plus watchdog 10 menit per run. Runner diverifikasi menangkap test gagal, hang async, dan loop sinkron.
+2. **Baseline `071dc0a`, 30 run** (sebagian bersamaan dengan pekerjaan lain di mesin): 29 lulus, **1 gagal (run 22)**, 0 hang. Test: `proses dashboard ... buat job lewat dashboard, status berubah, timeline memakai event yang sama dengan API`, `testCodeFailure`: `dashboard harus melihat lebih dari satu status, dapat SUCCEEDED`.
+3. **Akar masalah: race di test dashboard yang ditulis fase ini, bukan bug sistem.** Test memastikan dashboard "melihat" ≥ 2 status sambil worker sudah berjalan. Dengan konfigurasi test (POLL_MS 20, backoff 0-50 ms) job itu selesai dalam 13-85 ms (p50 62 ms, diukur 20 job). Kalau poll pertama terlambat (koneksi DB pertama, GC, CPU sibuk), dashboard hanya melihat SUCCEEDED. Dibuktikan: dengan poll pertama ditunda 250 ms, test lama gagal 5/5 dengan pesan yang identik dengan run 22.
+4. **Perbaikan berdasarkan bukti:** test dibuat deterministik. Job dibuat lewat dashboard tanpa worker, dashboard harus melihat PENDING (timeline: 0 attempt, jeda antre terbuka), baru worker dinyalakan dan SUCCEEDED ditunggu. Assertion "status berubah teramati" tetap ada, tanpa bergantung timing. Dengan penundaan 250 ms yang sama, test baru lulus 5/5. Tidak ada perubahan di kode sistem.
+5. Test capstone diperiksa untuk pola yang sama (assertion status antara sambil worker berjalan): tidak ada. Status antara di test lama berasal dari respons POST, job yang macet disengaja (`RECOVERY=0`), atau worker yang sudah mati.
+
+**Hasil setelah perbaikan (kode final):** 30/30 run lulus dengan mesin tenang, 10/10 run lulus dengan 4 loop CPU penuh (load average ±5 pada 4 CPU). 0 hang, 0 timeout.
+
+**Status:** kegagalan yang tertangkap (run 22) **terselesaikan**, akar masalah terbukti. Kejadian awal 1/15 **tidak bisa dipastikan sama** karena lognya tidak ada; test ini adalah satu-satunya race yang ditemukan dan kejadian awal juga terjadi saat mesin sibuk, jadi kemungkinan besar sama, tetapi itu **inferensi, bukan bukti**. Dicatat sebagai risiko yang tersisa sampai validasi Windows/`nanad` (yang wajib memakai `npm run test:repeat`) juga bersih.
 

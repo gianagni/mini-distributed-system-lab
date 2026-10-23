@@ -11,7 +11,7 @@ Capstone Bab 10 modul *Inside Modern AI Systems*: sistem kecil untuk job asynchr
 
 ```bash
 npm run doctor       # cek Node, node:sqlite, direktori data, port
-npm test             # 76 test (58 capstone + 13 dashboard + 5 security), sekitar 30 detik
+npm test             # 85 test (58 capstone + 13 dashboard + 14 security), sekitar 30 detik
 npm run lab          # API + 2 worker + dashboard di http://127.0.0.1:3100 (Ctrl+C untuk berhenti)
 npm run experiment   # ablation + drain capacity, sekitar 5 menit (EXP_REPS=1 untuk sekitar 2 menit)
 ```
@@ -37,10 +37,11 @@ npm run experiment   # ablation + drain capacity, sekitar 5 menit (EXP_REPS=1 un
 
 | Method | Path | Hasil |
 |---|---|---|
-| POST | `/jobs` | 202 job baru · 200 replay `Idempotency-Key` · 400 validasi/URL · 409 key dipakai untuk isi berbeda · 413 body > 16 KB · 415 bukan `Content-Type: application/json` · 408 request lambat · 429 antrean penuh (`Retry-After`) |
+| POST | `/jobs` | 202 job baru · 200 replay `Idempotency-Key` · 400 validasi/URL · 409 key dipakai untuk isi berbeda · 413 body > 16 KB · 415 bukan `Content-Type: application/json` · 403 `Origin` browser lain · 408 request lambat · 429 antrean penuh (`Retry-After`) |
 | GET | `/jobs/:id` | Job + `result` (`reportFile`, `sha256`, `bytes`) + riwayat event per attempt · 404 |
 | GET | `/metrics` | Status job, counter, error class, histogram attempts, p50/p95/p99, health antrean |
 | GET | `/healthz` | `{"ok":true}` kalau DB bisa diakses |
+| semua | semua | 403 `BAD_HOST` kalau header `Host` bukan `localhost`/`127.0.0.1`/`[::1]` dengan port API, atau entri `ALLOWED_HOSTS` (proteksi DNS rebinding, [AUDIT S-2](docs/AUDIT.md#temuan-keamanan-setelah-capstone-fase-dashboard-2026-10-23)) |
 
 Body POST: `{"type":"order_report","payload":{"orderCount":1..200000,"seed":0..2^31-1}}` dengan header wajib `Content-Type: application/json` (proteksi CSRF, [AUDIT S-1](docs/AUDIT.md#temuan-keamanan-setelah-capstone-fase-dashboard-2026-10-23)). Field `payload.simulate` (`delayMs`, `failTransientTimes`, `failPermanent`, `hang`, `crashAfterWriteTimes`) untuk fault injection, hanya diterima kalau `ALLOW_FAULT_INJECTION=1` di API **dan** worker, dan hanya di HOST loopback.
 
@@ -92,7 +93,8 @@ Semua retry dibatasi `MAX_ATTEMPTS`, dengan exponential backoff + full jitter.
 | Variabel | Default | Arti |
 |---|---|---|
 | `HOST` / `PORT` | 127.0.0.1 / 3000 | Alamat API. Non-loopback ditolak kecuali `ALLOW_REMOTE=1` |
-| `ALLOW_REMOTE` | 0 | Izinkan bind non-loopback. API **tanpa autentikasi** |
+| `ALLOW_REMOTE` | 0 | Izinkan bind non-loopback. API **tanpa autentikasi**. Tidak mematikan pemeriksaan `Host` |
+| `ALLOWED_HOSTS` | (kosong) | Nilai `Host` tambahan, `nama[:port]` dipisah koma, tanpa wildcard. Mis. SSH forward ke port lokal lain: `127.0.0.1:8100,localhost:8100`. Berlaku untuk API dan dashboard |
 | `REQUEST_TIMEOUT_MS` | 10000 | Batas waktu request HTTP (408) |
 | `DB_PATH` / `REPORT_DIR` | ./data/jobs.db / ./data/reports | Storage |
 | `MAX_ATTEMPTS` | 3 | Batas attempt per job |
@@ -120,9 +122,10 @@ src/metrics.js      /metrics                   src/errors.js       error class
 src/backoff.js      backoff + jitter           src/config.js       env + validasi
 src/dashboard.js    entrypoint dashboard       src/dashboard-http.js route, keamanan, proxy
 src/readmodel.js    query read-only            src/timeline.js     timeline dari job_events (murni)
+src/hostguard.js    allowlist Host + Origin (API dan dashboard)
 dashboard/          UI (HTML/CSS/ES modules, tanpa build): app.js, lib.js, views/*.js
-scripts/            lab, csrf-check, experiment, compare-results, check-consistency, doctor, clean, lib/harness
-test/               unit, integration (34 test asli), storage, reliability (24 test baru), dashboard (13), security (5), helpers
+scripts/            lab, csrf-check, host-check, test-repeat, experiment, compare-results, check-consistency, doctor, clean, lib/harness
+test/               unit, integration (34 test asli), storage, reliability (24 test baru), dashboard (13), security (14), helpers
 ```
 
 ## Known limitations
@@ -136,6 +139,7 @@ Ringkasan, detail di [AUDIT.md](docs/AUDIT.md) dan [ADR-001](docs/ADR-001-archit
 - Throughput sangat bergantung pada biaya fsync storage (`nanad` 6-12x lebih cepat dari sandbox untuk operasi storage); jangan dipindahkan antar mesin tanpa diukur ulang.
 - Lock SQLite memblokir event loop proses yang menunggu (dibatasi `BUSY_TIMEOUT_MS`).
 - Tanpa autentikasi, tanpa retensi data, metrik dihitung O(jumlah job). Dashboard yang polling menjalankan query O(n) itu setiap interval.
-- CSRF lewat `POST /jobs` sudah ditutup (AUDIT S-1, cek dengan `npm run csrf-check`). Yang tersisa: API belum memeriksa header `Host`, jadi DNS rebinding masih mungkin (dashboard sudah memeriksa `Host`).
+- CSRF (AUDIT S-1, `npm run csrf-check`) dan DNS rebinding (AUDIT S-2, `npm run host-check`) sudah ditutup untuk serangan lewat browser. Proses lokal non-browser tetap bisa memakai API (tanpa autentikasi, disengaja).
+- Satu kegagalan test yang belum terjelaskan (1 dari 15 run, AUDIT U-1). `npm run test:repeat` menyimpan log lengkap untuk menyelidikinya.
 - Dashboard: worker idle tidak terlihat (tidak ada registry worker), dan waktu kematian worker hanya diketahui sebagai waktu deteksi (`lease_expired`).
 - Eksperimen dan test dijalankan di InstaBox `nanad` oleh pemilik proyek (hasil di `docs/evidence/nanad/`, diverifikasi di `COMPARISON.md`). Log test `nanad` tidak dilampirkan.

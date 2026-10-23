@@ -1,0 +1,20 @@
+== [AFTER-final] curl with untrusted Host
+  API       GET  /metrics  Host: attacker.test:3981          -> 403
+  API       POST /jobs     Host: attacker.test:3981          -> 403
+  API       GET  /healthz  Host: 127.0.0.1:3981 (legit)      -> 200
+  Dashboard GET  /api/overview Host: attacker.test (default) -> 403
+  Dashboard GET  /api/overview Host: attacker.test (ALLOW_REMOTE=1, loopback bind) -> 403
+== [AFTER-final] Chromium, simulated rebinding
+[AFTER-final API] page origin http://rebind.test:3981 (browser PNA: ON, Chromium default)
+[AFTER-final API]   read : error Failed to fetch
+[AFTER-final API]   write: error Failed to fetch
+[AFTER-final API] page origin http://rebind.test:3981 (browser PNA: OFF, simulating Firefox/Safari)
+[AFTER-final API]   read : 403 {"error":{"code":"BAD_HOST","message":"Host header tidak diizinkan. Akses lewat 127.0.0.1/
+[AFTER-final API]   write: 403 {"error":{"code":"BAD_HOST","message":"Host header tidak diizinkan. Akses lewat 127.0.0.1/
+[AFTER-final dashboard ALLOW_REMOTE=1] page origin http://rebind.test:3983 (browser PNA: OFF, simulating Firefox/Safari)
+[AFTER-final dashboard ALLOW_REMOTE=1]   read : 403 {"error":{"code":"BAD_HOST","message":"Host header tidak diizinkan. Buka dashboard lewat 1
+[AFTER-final dashboard ALLOW_REMOTE=1]   write: 403 {"error":{"code":"BAD_HOST","message":"Host header tidak diizinkan. Buka dashboard lewat 1
+[AFTER-final dashboard default] page origin http://rebind.test:3982 (browser PNA: OFF, simulating Firefox/Safari)
+[AFTER-final dashboard default]   read : 403 {"error":{"code":"BAD_HOST","message":"Host header tidak diizinkan. Buka dashboard lewat 1
+[AFTER-final dashboard default]   write: 403 {"error":{"code":"BAD_HOST","message":"Host header tidak diizinkan. Buka dashboard lewat 1
+== [AFTER-final] jobs in DB: 0

@@ -1,0 +1,243 @@
+{
+  "node": "v22.22.0",
+  "platform": "linux 6.18.44-fc-v153",
+  "cpus": 4,
+  "runs": 10,
+  "testTimeout": 120000,
+  "runTimeout": 600000,
+  "failedRuns": [],
+  "hungRuns": [],
+  "failuresByTest": {},
+  "results": [
+    {
+      "run": 1,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 35667,
+      "loadavgAtStart": [
+        0.45,
+        0.66,
+        0.62
+      ],
+      "summary": {
+        "tests": 85,
+        "suites": 19,
+        "pass": 85,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 35600.662588
+      },
+      "log": "./run-001.log"
+    },
+    {
+      "run": 2,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 36138,
+      "loadavgAtStart": [
+        2.47,
+        1.16,
+        0.79
+      ],
+      "summary": {
+        "tests": 85,
+        "suites": 19,
+        "pass": 85,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 36042.405511
+      },
+      "log": "./run-002.log"
+    },
+    {
+      "run": 3,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 36088,
+      "loadavgAtStart": [
+        3.68,
+        1.64,
+        0.97
+      ],
+      "summary": {
+        "tests": 85,
+        "suites": 19,
+        "pass": 85,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 35970.033017
+      },
+      "log": "./run-003.log"
+    },
+    {
+      "run": 4,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 35557,
+      "loadavgAtStart": [
+        4.19,
+        2,
+        1.11
+      ],
+      "summary": {
+        "tests": 85,
+        "suites": 19,
+        "pass": 85,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 35460.304317
+      },
+      "log": "./run-004.log"
+    },
+    {
+      "run": 5,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 36007,
+      "loadavgAtStart": [
+        4.69,
+        2.36,
+        1.27
+      ],
+      "summary": {
+        "tests": 85,
+        "suites": 19,
+        "pass": 85,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 35922.135089
+      },
+      "log": "./run-005.log"
+    },
+    {
+      "run": 6,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 35851,
+      "loadavgAtStart": [
+        4.98,
+        2.69,
+        1.42
+      ],
+      "summary": {
+        "tests": 85,
+        "suites": 19,
+        "pass": 85,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 35757.254618
+      },
+      "log": "./run-006.log"
+    },
+    {
+      "run": 7,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 36927,
+      "loadavgAtStart": [
+        5.19,
+        2.99,
+        1.57
+      ],
+      "summary": {
+        "tests": 85,
+        "suites": 19,
+        "pass": 85,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 36846.075367
+      },
+      "log": "./run-007.log"
+    },
+    {
+      "run": 8,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 36036,
+      "loadavgAtStart": [
+        4.93,
+        3.2,
+        1.7
+      ],
+      "summary": {
+        "tests": 85,
+        "suites": 19,
+        "pass": 85,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 35946.426901
+      },
+      "log": "./run-008.log"
+    },
+    {
+      "run": 9,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 35662,
+      "loadavgAtStart": [
+        5.06,
+        3.42,
+        1.83
+      ],
+      "summary": {
+        "tests": 85,
+        "suites": 19,
+        "pass": 85,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 35546.923152
+      },
+      "log": "./run-009.log"
+    },
+    {
+      "run": 10,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 36249,
+      "loadavgAtStart": [
+        5.11,
+        3.61,
+        1.95
+      ],
+      "summary": {
+        "tests": 85,
+        "suites": 19,
+        "pass": 85,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 36156.532334
+      },
+      "log": "./run-010.log"
+    }
+  ]
+}

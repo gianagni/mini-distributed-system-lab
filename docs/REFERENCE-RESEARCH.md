@@ -162,7 +162,7 @@ Biaya: satu proses lagi. Dimitigasi `npm run lab`.
 ### Keamanan dashboard
 
 - Bind loopback secara default; non-loopback wajib `ALLOW_REMOTE=1`; fault injection hanya di loopback (aturan yang sama dengan API).
-- Header `Host` diperiksa (proteksi DNS rebinding untuk endpoint baca).
+- Header `Host` diperiksa dengan allowlist ketat yang sama dengan API (`src/hostguard.js`, AUDIT S-2). Versi pertama dashboard melewati pemeriksaan ini saat `ALLOW_REMOTE=1`; itu sudah diperbaiki.
 - `POST /api/jobs` wajib `Content-Type: application/json` (memaksa preflight CORS yang tidak pernah dijawab) dan `Origin` (kalau ada) harus sama dengan host dashboard.
 - CSP `default-src 'self'`, tanpa inline script, `frame-ancestors 'none'`. Semua teks dari database di-escape sebelum dirender.
 - File statis dari whitelist yang dibaca saat start, bukan dari path request (tidak ada path traversal).
@@ -202,5 +202,11 @@ Penanda fencing (`stale_*_rejected`) sulit dipicu lewat UI (heartbeat biasanya m
 - `test/security.test.js`: 5 test; 3 gagal di `http.js` lama, semua lulus di kode baru.
 - `npm test` 76/76. Dari 15 run penuh, 14 lulus dan **1 gagal satu test yang tidak teridentifikasi**: run itu hanya menyimpan baris ringkasan, dan berjalan bersamaan dengan proses test lain. Tidak terulang di 12 run berikutnya (5 normal, 4 dengan proses test paralel, 3 dengan 4 loop CPU penuh). Dicatat apa adanya, bukan dianggap flake. Validasi di mesin lain wajib menyimpan log penuh (`docs/VALIDATION-PLAN.md`).
 - Browser smoke ulang di kode final: semua skenario di atas lulus, form dashboard tetap 202, `npm run check` 0 violation. Klaim di VALIDATION-PLAN (iframe 415, "Polling mati", "⚠ Gagal sejak" saat lab berhenti) dicek di Chromium.
+
+### Setelah perbaikan S-2 (DNS rebinding, Origin) dan U-1 (kegagalan test)
+
+- Reproduksi S-2 di `071dc0a` (lokal, terisolasi): API melayani `Host: attacker.test` (baca 200, tulis 202); dashboard dengan `ALLOW_REMOTE=1` juga. Chromium 141 dengan Private Network Access aktif sudah memblokir pola ini di browser; dengan PNA dimatikan (perilaku Firefox/Safari/Chrome lama) halaman penyerang membaca `/metrics` dan membuat job. Setelah perbaikan: semua 403 `BAD_HOST`, 0 job.
+- Browser smoke di kode final: skenario lengkap (buat job, retry, job inspector, polling, kill worker, crash, idempotency, burst) lulus; dashboard lewat forwarder TCP gaya `ssh -L` di port lokal lain: 200 dan job sukses dengan `ALLOWED_HOSTS`, 403 tanpa; `host-check` dan `csrf-check` LULUS; `npm run check` 0 violation.
+- U-1: lihat AUDIT. Penyebab kegagalan yang tertangkap dengan log lengkap adalah race di test dashboard milik fase ini (bukan sistem), sudah dibuat deterministik.
 
 **Belum diverifikasi:** Windows dan InstaBox `nanad` (dashboard, `npm run lab`, 13 test baru). Catatan Windows di RUNBOOK berdasarkan perilaku Node yang terdokumentasi, bukan percobaan.

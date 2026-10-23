@@ -1,0 +1,35 @@
+Node v22.22.0, linux 6.18.44-fc-v153, 4 CPU
+30 run, test-timeout 120000 ms, run-timeout 600000 ms, log: repeat-final-quiet
+run   1: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.3 s load=0.37
+run   2: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.2 s load=0.68
+run   3: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.0 s load=0.81
+run   4: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.1 s load=0.66
+run   5: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.4 s load=0.64
+run   6: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.1 s load=0.92
+run   7: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.3 s load=0.66
+run   8: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.2 s load=0.96
+run   9: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.4 s load=0.89
+run  10: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.4 s load=1.06
+run  11: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.4 s load=0.93
+run  12: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.5 s load=1
+run  13: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.5 s load=0.73
+run  14: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.6 s load=0.66
+run  15: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.9 s load=0.7
+run  16: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.6 s load=0.69
+run  17: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.7 s load=0.77
+run  18: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.4 s load=1.05
+run  19: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.4 s load=1.03
+run  20: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.5 s load=1.18
+run  21: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.6 s load=1.11
+run  22: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.6 s load=0.95
+run  23: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 26.9 s load=0.76
+run  24: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.1 s load=0.74
+run  25: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.4 s load=0.61
+run  26: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.3 s load=0.9
+run  27: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.6 s load=0.59
+run  28: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.7 s load=0.51
+run  29: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 28.1 s load=0.4
+run  30: ok   exit=0 tests=85 pass=85 fail=0 cancelled=0 skipped=0 27.5 s load=0.48
+
+Hasil: 30/30 run lulus. Run gagal: -
+Ringkasan: repeat-final-quiet/summary.json

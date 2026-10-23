@@ -28,11 +28,11 @@ Exit code 0 berarti siap. Kalau ada `GAGAL`, lihat bagian Troubleshooting.
 ## 2. Menjalankan tests
 
 ```bash
-npm test                      # 76 test (58 capstone + 13 dashboard + 5 security), sekitar 30 detik
+npm test                      # 85 test (58 capstone + 13 dashboard + 14 security), sekitar 30 detik
 ```
-Hasil yang diharapkan ada di baris akhir: `# pass 76` dan `# fail 0`. Di Windows, satu test (`worker zombie (SIGSTOP...)`) di-skip karena SIGSTOP tidak ada; hasilnya `# pass 75`, `# skipped 1`. (Run `nanad` yang dilaporkan 58/58 terjadi sebelum test dashboard ditambahkan.) Untuk memeriksa flakiness:
+Hasil yang diharapkan ada di baris akhir: `# pass 85` dan `# fail 0`. Di Windows, satu test (`worker zombie (SIGSTOP...)`) di-skip karena SIGSTOP tidak ada; hasilnya `# pass 84`, `# skipped 1`. Setiap file test dibatasi 120 detik (`--test-timeout`), jadi test yang hang muncul sebagai `testTimeoutFailure`, bukan menggantung. (Run `nanad` yang dilaporkan 58/58 terjadi sebelum test dashboard ditambahkan.) Untuk memeriksa flakiness, pakai runner yang menyimpan bukti (log TAP lengkap per run, exit code, nama test gagal, `summary.json`):
 ```bash
-for i in 1 2 3 4 5; do npm test 2>&1 | grep -E '^# (pass|fail)' | tr '\n' ' '; echo; done
+npm run test:repeat -- --runs 20          # log di test-runs/<waktu>/ (di-ignore git)
 ```
 Test memakai temp directory dan port acak, jadi tidak mengganggu `data/` atau port 3000.
 
@@ -147,7 +147,7 @@ rm -rf logs run
 | `npm test` | Dilaporkan 58/58 di `nanad`. Log tidak dilampirkan |
 | `npm run experiment` (3 repetisi) | Ada di `docs/evidence/nanad/`. Markdown = render JSON, konsisten, SHA-256 ZIP cocok (`COMPARISON.md`) |
 | Langkah 3-7 (background, job manual, stop, clean) | Belum dilaporkan dari `nanad` |
-| Dashboard (§10) + S-1: `npm test` 76/76, `npm run lab`, `npm run csrf-check`, skenario browser | Hanya di sandbox Linux (Node 22.22.0, Chromium headless). **Belum** dijalankan di `nanad` maupun Windows; langkahnya di `docs/VALIDATION-PLAN.md` |
+| Dashboard (§10) + S-1 + S-2: `npm test` 85/85, `npm run lab`, `csrf-check`, `host-check`, skenario browser | Hanya di sandbox Linux (Node 22.22.0, Chromium headless). **Belum** dijalankan di `nanad` maupun Windows; langkahnya di `docs/VALIDATION-PLAN.md` |
 | Lokasi storage eksperimen | Eksperimen memakai `os.tmpdir()`. Jalankan `df -T /tmp "$(pwd)/data"` untuk tahu apakah `/tmp` adalah tmpfs. Ini menentukan apakah angka throughput mewakili disk persisten |
 
 ## 10. Dashboard (Reliability Lab)
@@ -198,6 +198,12 @@ Dashboard hanya mendengar di `127.0.0.1` (tanpa autentikasi, sama seperti API). 
 ```bash
 ssh -L 3100:127.0.0.1:3100 <user>@<instabox>     # lalu buka http://127.0.0.1:3100/ di laptop
 ```
+**Pakai port lokal yang sama dengan port di InstaBox.** Server memeriksa header `Host` (proteksi DNS rebinding, AUDIT S-2), dan browser mengirim port lokal tunnel. Kalau port lokal harus berbeda (mis. 3100 sudah dipakai di laptop):
+```bash
+ssh -L 8100:127.0.0.1:3100 <user>@<instabox>
+# di InstaBox:
+ALLOWED_HOSTS=127.0.0.1:8100,localhost:8100 npm run lab
+```
 Kalau InstaBox punya fitur port forwarding di web UI-nya, arahkan ke port 3100. `ALLOW_REMOTE=1` hanya kalau jaringan sudah dilindungi; fault injection tetap ditolak di non-loopback.
 
 ### Skenario untuk diamati
@@ -223,7 +229,8 @@ Mencari PID worker untuk `kill -9` di Linux: `pgrep -af 'src/worker.js'`.
 | Form: `502 API_UNREACHABLE` | API mati atau `API_URL`/`PORT` berbeda | Jalankan API, samakan `PORT` |
 | Panel fault injection tidak muncul | Dashboard tanpa `ALLOW_FAULT_INJECTION=1` | `npm run lab -- --fault-injection` |
 | `400 ... ALLOW_FAULT_INJECTION` padahal panel muncul | Dashboard punya flag, API tidak | Jalankan semua lewat `npm run lab -- --fault-injection` |
-| `403 BAD_HOST` | Dashboard dibuka lewat nama host selain 127.0.0.1/localhost | Pakai `http://127.0.0.1:3100/` (proteksi DNS rebinding) |
+| `403 BAD_HOST` (API atau dashboard) | Dibuka lewat nama/port selain `127.0.0.1`/`localhost` dengan port server, mis. SSH tunnel ke port lokal berbeda | Pakai port lokal yang sama, atau set `ALLOWED_HOSTS=127.0.0.1:<port lokal>,localhost:<port lokal>`. Jangan menambahkan nama yang tidak dipakai. Log server: `host_rejected` |
+| `403 CROSS_ORIGIN` | Request browser dari origin lain (atau `Origin: null`) | Disengaja (AUDIT S-2). Kirim dari dashboard/origin yang sama, atau dari CLI (tanpa `Origin`) |
 | Header: "⚠ Gagal sejak …" | Dashboard server mati atau DB sibuk | Data di layar adalah snapshot terakhir; cek proses dashboard |
 | `EADDRINUSE` port 3100 | Dashboard lama masih jalan | Hentikan, atau `DASHBOARD_PORT=3101` |
 

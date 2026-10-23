@@ -1,0 +1,20 @@
+== [BEFORE-071dc0a] curl with untrusted Host
+  API       GET  /metrics  Host: attacker.test:3981          -> 200
+  API       POST /jobs     Host: attacker.test:3981          -> 202
+  API       GET  /healthz  Host: 127.0.0.1:3981 (legit)      -> 200
+  Dashboard GET  /api/overview Host: attacker.test (default) -> 403
+  Dashboard GET  /api/overview Host: attacker.test (ALLOW_REMOTE=1, loopback bind) -> 200
+== [BEFORE-071dc0a] Chromium, simulated rebinding
+[BEFORE-071dc0a API] page origin http://rebind.test:3981 (browser PNA: ON, Chromium default)
+[BEFORE-071dc0a API]   read : error Failed to fetch
+[BEFORE-071dc0a API]   write: error Failed to fetch
+[BEFORE-071dc0a API] page origin http://rebind.test:3981 (browser PNA: OFF, simulating Firefox/Safari)
+[BEFORE-071dc0a API]   read : 200 {"generatedAt":"2026-10-23T07:10:18.051Z","jobs":{"total":1,"byStatus":{"PENDING":1,"RUNNI
+[BEFORE-071dc0a API]   write: 202 {"id":"984bd99d-5283-4d3e-9dea-1dec47932c1d","type":"order_report","status":"PENDING","att
+[BEFORE-071dc0a dashboard ALLOW_REMOTE=1] page origin http://rebind.test:3983 (browser PNA: OFF, simulating Firefox/Safari)
+[BEFORE-071dc0a dashboard ALLOW_REMOTE=1]   read : 200 {"generatedAt":1792739418610,"metrics":{"generatedAt":"2026-10-23T07:10:18.610Z","jobs":{"
+[BEFORE-071dc0a dashboard ALLOW_REMOTE=1]   write: 202 {"id":"10d25bb2-7cc8-46bf-b628-4bf48f11cb30","type":"order_report","status":"PENDING","att
+[BEFORE-071dc0a dashboard default] page origin http://rebind.test:3982 (browser PNA: OFF, simulating Firefox/Safari)
+[BEFORE-071dc0a dashboard default]   read : 403 {"error":{"code":"BAD_HOST","message":"Host header tidak dikenal. Buka dashboard lewat 127
+[BEFORE-071dc0a dashboard default]   write: 403 {"error":{"code":"BAD_HOST","message":"Host header tidak dikenal. Buka dashboard lewat 127
+== [BEFORE-071dc0a] jobs in DB: 3

@@ -1,0 +1,64 @@
+# Browser smoke, kode final (working tree di atas 071dc0a), 2026-10-23T07:09:15Z
+# Chromium Chromium 141.0.7390.37 , Node v22.22.0
+## 1. Skenario UI lengkap (run.mjs)
+07:09:18.664 created transient2 968bcb29-a00e-4da5-bcf1-e1c896161db2
+07:09:21.161 attempt rows 4
+07:09:21.277 created slow f5eb09be-0d7d-4901-a9a9-6b049341ced1
+07:09:21.307 kill -9 w2 27297
+07:09:33.074 created permanent eb09bcc2-fffe-4614-a052-e957c110f73f
+07:09:35.341 created transientAll eebf7a97-5bd5-49d6-b031-453ec6a8d0db
+07:09:37.903 409 result:  409 × 1 IDEMPOTENCY_CONFLICT Idempotency-Key sudah dipakai untuk request dengan isi berbeda Body respons terakhir{ "error": { "code": "IDEMPOTENCY_CONFLICT", "
+07:09:38.028 created crash 9e950107-1cf8-4b46-a526-0fa92f89071d
+07:09:44.529 crash job attempts: 2/3
+07:09:44.799 burst: 202 × 20
+07:09:45.006 FAILED rows 2
+07:09:49.007 mobile horizontal overflow px: 0
+07:09:49.162 mobile overview overflow px: 0
+CONSOLE ERRORS: [
+  'error: Failed to load resource: the server responded with a status of 409 (Conflict)'
+]
+## 2. Lewat forwarder TCP gaya ssh -L
+[forward 4922 (ALLOWED_HOSTS)] GET http://127.0.0.1:4922/ -> HTTP 200
+[forward 4922 (ALLOWED_HOSTS)] job via tunnel: ✓, attempts 3/3
+[forward 4922 (ALLOWED_HOSTS)] console errors: none
+[forward 4923 (tidak diizinkan)] GET http://127.0.0.1:4923/ -> HTTP 403
+[forward 4923 (tidak diizinkan)] body: {"error":{"code":"BAD_HOST","message":"Host header tidak diizinkan. Buka dashboard lewat 127.0.0.1/localhost, atau tamba
+[forward 4923 (tidak diizinkan)] console errors: Failed to load resource: the server responded with a status of 403 (Forbidden)
+## 3. npm run host-check
+LULUS  API       akses sah (Host asli)                    harap 200, dapat 200
+LULUS  API       akses sah lewat localhost                harap 200, dapat 200
+LULUS  API       rebinding: baca dengan Host penyerang    harap 403, dapat 403 BAD_HOST
+LULUS  API       rebinding: tulis dengan Host penyerang   harap 403, dapat 403 BAD_HOST
+LULUS  API       Host tanpa port                          harap 403, dapat 403 BAD_HOST
+LULUS  API       Host port lain                           harap 403, dapat 403 BAD_HOST
+LULUS  API       tulis dari Origin lain (JSON)            harap 403, dapat 403 CROSS_ORIGIN
+LULUS  Dashboard akses sah (Host asli)                    harap 200, dapat 200
+LULUS  Dashboard akses sah lewat localhost                harap 200, dapat 200
+LULUS  Dashboard rebinding: baca dengan Host penyerang    harap 403, dapat 403 BAD_HOST
+LULUS  Dashboard rebinding: tulis dengan Host penyerang   harap 403, dapat 403 BAD_HOST
+LULUS  Dashboard Host tanpa port                          harap 403, dapat 403 BAD_HOST
+LULUS  Dashboard Host port lain                           harap 403, dapat 403 BAD_HOST
+LULUS  Dashboard tulis dari Origin lain (JSON)            harap 403, dapat 403 CROSS_ORIGIN
+Semua pemeriksaan Host/Origin lulus.
+## 4. npm run csrf-check (dibuka Chromium)
+page log: A. fetch no-cors text/plain: terkirim (respons opaque, hasil lihat terminal) | B. fetch application/json: diblokir browser (preflight CORS ditolak) - diharapkan | C. <form enctype=text/plain> tanpa JavaScript: dikirim (status ada di iframe) | Selesai. Lihat terminal.
+[2]+  Done                    PORT=3921 node scripts/csrf-check.js > $OUT/csrf.log 2>&1
+csrf-check exit=0
+API target : http://127.0.0.1:3921 (job sekarang: 27)
+Buka di browser: http://localhost:4801/
+Menunggu halaman selesai… (Ctrl+C untuk batal)
+
+Job yang berhasil dibuat halaman lintas situs: 0
+LULUS: API menolak semua request lintas situs.
+## 5. Polling, stale banner, iframe CSRF (claims.mjs; menghentikan lab)
+iframe: {"error":{"code":"UNSUPPORTED_MEDIA_TYPE","message":"Content-Type harus application/json"}}
+poll off -> Polling mati · snapshot server 07:09:59
+poll 1s -> Polling tiap 1 s · snapshot server 07:10:00
+lab stopped -> ⚠ Gagal sejak 07:10:01 · snapshot server 07:10:00
+banner -> ⚠ Gagal memperbarui: Failed to fetch. Data di bawah adalah snapshot 07:10:00 dan mungkin sudah usang.
+old data still shown: 0
+[1]+  Done                    DB_PATH=$OUT/jobs.db REPORT_DIR=$OUT/reports PORT=3921 DASHBOARD_PORT=3922 ALLOWED_HOSTS=127.0.0.1:4922 nohup node scripts/lab.js --workers 2 --fault-injection > $OUT/lab.log 2>&1
+## 6. npm run check setelah semua skenario
+  "checkedJobs": 27,
+  "violations": 0,
+  "warnings": 0,

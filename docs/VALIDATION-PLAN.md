@@ -1,6 +1,6 @@
 # Validasi branch `feat/interactive-dashboard` di Windows dan InstaBox `nanad`
 
-Tujuan: membuktikan dashboard, `npm run lab`, dan perbaikan CSRF (AUDIT S-1) bekerja di luar sandbox Linux tempat semuanya dibuat. Status saat dokumen ditulis: **semua langkah di bawah baru dijalankan di sandbox Linux** (Node 22.22.0). Hasil yang diharapkan di bawah berasal dari sandbox itu.
+Tujuan: membuktikan dashboard, `npm run lab`, perbaikan CSRF (AUDIT S-1), dan proteksi DNS rebinding/Origin (AUDIT S-2) bekerja di luar sandbox Linux tempat semuanya dibuat. Status saat dokumen ditulis: **semua langkah di bawah baru dijalankan di sandbox Linux** (Node 22.22.0). Hasil yang diharapkan di bawah berasal dari sandbox itu.
 
 Aturan:
 - **Jangan jalankan `npm run experiment`** untuk validasi ini. Script itu menimpa `docs/EXPERIMENT-RESULTS.md` dan `docs/experiment-results.json` (hasil capstone). Kalau terlanjur: `git checkout -- docs/EXPERIMENT-RESULTS.md docs/experiment-results.json`.
@@ -22,9 +22,13 @@ npm run doctor                # semua OK, termasuk "Port dashboard 127.0.0.1:310
 | | Linux / `nanad` | Windows (PowerShell) |
 |---|---|---|
 | Perintah | `npm test 2>&1 \| tee test-$(hostname).log` | `npm test 2>&1 \| Tee-Object -FilePath test-windows.log` |
-| Hasil diharapkan | `# tests 76`, `# pass 76`, `# fail 0` | `# tests 76`, `# pass 75`, `# skipped 1` (SIGSTOP tidak ada di Windows), `# fail 0` |
+| Hasil diharapkan | `# tests 85`, `# pass 85`, `# fail 0` | `# tests 85`, `# pass 84`, `# skipped 1` (SIGSTOP tidak ada di Windows), `# fail 0` |
 
-Ulangi 3 kali untuk flakiness (`for i in 1 2 3; do npm test 2>&1 | grep -E '^# (pass|fail)'; done`).
+Lalu pengulangan dengan bukti (wajib, terkait AUDIT U-1):
+```bash
+npm run test:repeat -- --runs 20 --out test-runs/<mesin>
+```
+Hasilnya: `run-NNN.log` (TAP lengkap) per run dan `summary.json` (exit code, sinyal, durasi, load average, nama test yang gagal + `failureType`). Salin seluruh folder ke bukti. Di Windows, run dengan `skipped=1` dan exit 0 dihitung lulus. Kalau ada run gagal, **jangan** mengulang sampai hijau: lampirkan log run itu apa adanya.
 
 Yang paling mungkin berbeda di Windows (belum pernah dijalankan di sana):
 - Test kegagalan filesystem: rename ke direktori menghasilkan `EPERM` di Windows (Linux: `EISDIR`). Keduanya non-retryable, jadi test seharusnya tetap lulus.
@@ -58,7 +62,15 @@ Mematikan worker untuk langkah 7 (lab me-restart otomatis):
 
 Setelah selesai: `npm run check` (lab boleh tetap jalan) harus exit 0, `violations: 0`.
 
-## 3. Perbaikan CSRF di browser sungguhan (AUDIT S-1)
+## 3a. Host dan Origin (AUDIT S-2)
+
+Dengan lab masih berjalan, di terminal lain:
+```bash
+npm run host-check
+```
+Harus 14 baris `LULUS` (7 untuk API, 7 untuk dashboard) dan exit 0. Ini mengirim `Host: attacker.test:<port>` (keadaan setelah DNS rebinding), Host tanpa port / port lain, dan `POST` JSON dengan `Origin` lain. Akses sah lewat `127.0.0.1` dan `localhost` harus tetap 200.
+
+## 3b. Perbaikan CSRF di browser sungguhan (AUDIT S-1)
 
 Dengan lab masih berjalan, di terminal lain:
 ```bash
@@ -75,11 +87,11 @@ Di halaman, baris B harus "diblokir browser (preflight CORS ditolak)". Iframe di
 
 ## 4. InstaBox `nanad` tanpa browser lokal
 
-Dari laptop, tunnel tiga port (dashboard, API untuk csrf-check, halaman csrf-check):
+Dari laptop, tunnel tiga port (dashboard, API untuk csrf-check, halaman csrf-check), **dengan nomor port lokal sama** dengan port di `nanad`:
 ```bash
 ssh -L 3100:127.0.0.1:3100 -L 3000:127.0.0.1:3000 -L 4801:localhost:4801 <user>@<nanad>
 ```
-Pastikan laptop tidak sedang menjalankan API sendiri di port 3000. Lalu jalankan §2 dan §3 di `nanad` dan buka URL-nya di browser laptop. Jangan memakai `DASHBOARD_HOST=0.0.0.0` untuk ini.
+Pastikan laptop tidak sedang menjalankan API sendiri di port 3000. Port lokal yang sama penting: API dan dashboard memeriksa header `Host` (AUDIT S-2), dan browser mengirim port lokal tunnel. Kalau terpaksa memakai port lokal lain, mis. `-L 8100:127.0.0.1:3100`, jalankan lab di `nanad` dengan `ALLOWED_HOSTS=127.0.0.1:8100,localhost:8100`, lalu catat ini di checklist. Uji juga sekali dengan port lokal berbeda **tanpa** `ALLOWED_HOSTS`: dashboard harus menolak dengan `403 BAD_HOST` (bukti allowlist tidak terbuka). Lalu jalankan §2 dan §3 di `nanad` dan buka URL-nya di browser laptop. Jangan memakai `DASHBOARD_HOST=0.0.0.0` untuk ini.
 
 ## 5. Bukti yang dilampirkan
 
@@ -88,8 +100,10 @@ docs/evidence/<mesin>-dashboard/
   test-1.log, test-2.log, test-3.log    # output npm test lengkap
   doctor.txt                            # npm run doctor
   check.txt                             # npm run check setelah §2
-  csrf-check.txt                        # output terminal §3 + browser dan versinya
+  test-runs/                            # folder npm run test:repeat (log per run + summary.json)
+  host-check.txt                        # output §3a
+  csrf-check.txt                        # output terminal §3b + browser dan versinya
   checklist.md                          # tabel §2 dengan hasil per baris, plus OS, versi Node, browser
   screenshots/                          # opsional: overview, detail langkah 3 dan 6
 ```
-Lalu bandingkan dengan hasil sandbox di `docs/REFERENCE-RESEARCH.md` §10 dan `docs/AUDIT.md` S-1.
+Lalu bandingkan dengan hasil sandbox di `docs/REFERENCE-RESEARCH.md` §10 dan `docs/AUDIT.md` S-1, S-2, U-1.
