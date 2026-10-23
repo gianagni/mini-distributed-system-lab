@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reliability Lab</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/overview"><span class="logo" aria-hidden="true">◇</span> Reliability Lab</a>
+    <nav class="mainnav" aria-label="Utama">
+      <a href="#/overview" data-nav="overview">Overview</a>
+      <a href="#/jobs" data-nav="jobs">Jobs</a>
+      <a href="#/new" data-nav="new">Buat job</a>
+    </nav>
+    <span id="lab-badge" class="badge fault" hidden title="Dashboard dijalankan dengan ALLOW_FAULT_INJECTION=1">lab: fault injection aktif</span>
+    <div class="controls">
+      <span id="freshness" class="freshness" role="status" aria-live="polite">Memuat…</span>
+      <label class="poll">Polling <select id="poll" aria-label="Interval polling"></select></label>
+      <button type="button" id="refresh" class="secondary" title="Ambil snapshot sekarang">Refresh</button>
+      <button type="button" id="theme" class="secondary">Tema</button>
+    </div>
+  </header>
+  <div id="banner" class="notice warning banner" role="alert" hidden></div>
+  <main id="view" tabindex="-1"></main>
+  <footer class="foot muted small">
+    Data dibaca read-only dari SQLite lokal lewat polling, bukan push realtime. Job dibuat lewat <code>POST /jobs</code> milik API.
+  </footer>
+  <noscript><p class="notice warning">Dashboard ini butuh JavaScript.</p></noscript>
+</body>
+</html>

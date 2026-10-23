@@ -28,9 +28,9 @@ Exit code 0 berarti siap. Kalau ada `GAGAL`, lihat bagian Troubleshooting.
 ## 2. Menjalankan tests
 
 ```bash
-npm test                      # 58 test, sekitar 30 detik
+npm test                      # 71 test (58 capstone + 13 dashboard), sekitar 30 detik
 ```
-Hasil yang diharapkan ada di baris akhir: `# pass 58` dan `# fail 0`. Untuk memeriksa flakiness:
+Hasil yang diharapkan ada di baris akhir: `# pass 71` dan `# fail 0`. (Run `nanad` yang dilaporkan 58/58 terjadi sebelum test dashboard ditambahkan.) Untuk memeriksa flakiness:
 ```bash
 for i in 1 2 3 4 5; do npm test 2>&1 | grep -E '^# (pass|fail)' | tr '\n' ' '; echo; done
 ```
@@ -146,4 +146,83 @@ rm -rf logs run
 | `npm test` | Dilaporkan 58/58 di `nanad`. Log tidak dilampirkan |
 | `npm run experiment` (3 repetisi) | Ada di `docs/evidence/nanad/`. Markdown = render JSON, konsisten, SHA-256 ZIP cocok (`COMPARISON.md`) |
 | Langkah 3-7 (background, job manual, stop, clean) | Belum dilaporkan dari `nanad` |
+| Dashboard (§10): `npm test` 71/71, `npm run lab`, skenario browser | Hanya di sandbox Linux (Node 22.22.0, Chromium headless). **Belum** dijalankan di `nanad` maupun Windows |
 | Lokasi storage eksperimen | Eksperimen memakai `os.tmpdir()`. Jalankan `df -T /tmp "$(pwd)/data"` untuk tahu apakah `/tmp` adalah tmpfs. Ini menentukan apakah angka throughput mewakili disk persisten |
+
+## 10. Dashboard (Reliability Lab)
+
+Tidak butuh `npm install` atau build. Dashboard adalah proses ketiga yang membaca `data/jobs.db` secara read-only dan meneruskan pembuatan job ke API.
+
+### Satu perintah (Linux, macOS, Windows)
+
+```bash
+npm run lab                                   # API + 2 worker + dashboard
+npm run lab -- --workers 3 --fault-injection  # dengan panel fault injection (loopback saja)
+npm run lab -- --help
+```
+Buka `http://127.0.0.1:3100/`. `Ctrl+C` menghentikan semuanya. Worker yang mati (mis. preset "Crash setelah tulis" atau `kill -9`) di-restart setelah 1 detik dengan `WORKER_ID` yang sama, seperti supervisor; pakai `--no-restart` untuk mengamati job yang menunggu tanpa worker.
+
+`npm run lab` dibuat terutama untuk Windows: `WORKER_ID=w1 npm run worker` tidak jalan di cmd/PowerShell. Kalau tetap ingin menjalankan proses satu per satu di Windows:
+```powershell
+# PowerShell, satu terminal per proses
+npm run api
+$env:WORKER_ID="w1"; npm run worker
+npm run dashboard
+```
+```bat
+:: cmd.exe
+set "WORKER_ID=w1" && npm run worker
+```
+Fault injection di Windows: `npm run lab -- --fault-injection` (lebih mudah daripada men-set env di tiga terminal).
+
+Catatan Windows (belum diuji di Windows sungguhan, berdasarkan perilaku Node yang terdokumentasi):
+- Windows tidak punya `SIGTERM` sungguhan. `Ctrl+C` / `kill()` langsung menghentikan proses, jadi worker tidak sempat graceful shutdown. Job `RUNNING` di-reclaim setelah `LEASE_MS` saat lab dijalankan lagi. Tidak ada data yang hilang, hanya satu attempt terpakai.
+- Hentikan dashboard sebelum `npm run clean`: Windows tidak bisa menghapus file database yang sedang dibuka.
+
+### Proses terpisah (Linux/InstaBox)
+
+```bash
+npm run api                                   # terminal 1
+WORKER_ID=w1 npm run worker                   # terminal 2
+npm run dashboard                             # terminal 3 -> http://127.0.0.1:3100/
+```
+Background, sama dengan §3:
+```bash
+nohup node --disable-warning=ExperimentalWarning src/dashboard.js > logs/dashboard.log 2>&1 & echo $! > run/dashboard.pid
+```
+
+### Membuka dashboard dari InstaBox
+
+Dashboard hanya mendengar di `127.0.0.1` (tanpa autentikasi, sama seperti API). Dari laptop, pakai SSH tunnel, bukan `DASHBOARD_HOST=0.0.0.0`:
+```bash
+ssh -L 3100:127.0.0.1:3100 <user>@<instabox>     # lalu buka http://127.0.0.1:3100/ di laptop
+```
+Kalau InstaBox punya fitur port forwarding di web UI-nya, arahkan ke port 3100. `ALLOW_REMOTE=1` hanya kalau jaringan sudah dilindungi; fault injection tetap ditolak di non-loopback.
+
+### Skenario untuk diamati
+
+| Skenario | Cara | Yang terlihat |
+|---|---|---|
+| Retry + backoff | Buat job, preset "Transient 2×" | 3 attempt; jeda backoff (kuning) dan menunggu worker (abu) terpisah di timeline |
+| Retry habis | Preset "Transient terus" | `FAILED TRANSIENT` di attempt `MAX_ATTEMPTS` |
+| Permanen | Preset "Permanent" | `FAILED PERMANENT`, 1 attempt |
+| Worker mati | Preset "Lambat 5 s", lalu `kill -9` worker pemegang lease (lihat Overview → Sedang RUNNING) | Sisa lease turun ke negatif, lalu attempt baru oleh worker lain/restart; bar attempt lama berlabel "sampai deteksi" |
+| Crash sebelum commit | Preset "Crash setelah tulis" | Worker mati sendiri; job di-reclaim; `result.sha256` sama |
+| Idempotency | Isi Idempotency-Key, kirim dua kali | 202 lalu 200 dengan job yang sama; ubah orderCount → 409 |
+| Backpressure | `MAX_PENDING=5 npm run lab -- --workers 0`, kirim 10 request | 202 × 5, 429 × 5 |
+| Kontensi | `--workers 4`, kirim 50 request | Job tersebar di worker; "sukses ganda" tetap 0 |
+
+Mencari PID worker untuk `kill -9` di Linux: `pgrep -af 'src/worker.js'`.
+
+### Troubleshooting dashboard
+
+| Gejala | Penyebab | Tindakan |
+|---|---|---|
+| `DB_NOT_READY` | Database belum dibuat | Jalankan API dulu; dashboard memuat sendiri setelahnya |
+| Form: `502 API_UNREACHABLE` | API mati atau `API_URL`/`PORT` berbeda | Jalankan API, samakan `PORT` |
+| Panel fault injection tidak muncul | Dashboard tanpa `ALLOW_FAULT_INJECTION=1` | `npm run lab -- --fault-injection` |
+| `400 ... ALLOW_FAULT_INJECTION` padahal panel muncul | Dashboard punya flag, API tidak | Jalankan semua lewat `npm run lab -- --fault-injection` |
+| `403 BAD_HOST` | Dashboard dibuka lewat nama host selain 127.0.0.1/localhost | Pakai `http://127.0.0.1:3100/` (proteksi DNS rebinding) |
+| Header: "⚠ Gagal sejak …" | Dashboard server mati atau DB sibuk | Data di layar adalah snapshot terakhir; cek proses dashboard |
+| `EADDRINUSE` port 3100 | Dashboard lama masih jalan | Hentikan, atau `DASHBOARD_PORT=3101` |
+

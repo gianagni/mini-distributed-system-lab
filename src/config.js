@@ -60,3 +60,43 @@ export function loadConfig(env = process.env) {
   }
   return cfg;
 }
+
+/**
+ * Konfigurasi proses dashboard (npm run dashboard). Terpisah dari loadConfig supaya
+ * validasi API/worker tidak berubah. Aturan keamanannya sama: loopback secara default,
+ * fault injection hanya di loopback.
+ */
+export function loadDashboardConfig(env = process.env) {
+  const cfg = {
+    dbPath: env.DB_PATH || './data/jobs.db',
+    host: env.DASHBOARD_HOST || '127.0.0.1',
+    port: int(env, 'DASHBOARD_PORT', 3100),
+    apiUrl: env.API_URL || `http://127.0.0.1:${int(env, 'PORT', 3000)}`,
+    allowRemote: env.ALLOW_REMOTE === '1',
+    // Hanya menampilkan panel fault injection. API dan worker tetap memvalidasi flag mereka sendiri.
+    allowFaultInjection: env.ALLOW_FAULT_INJECTION === '1',
+    busyTimeoutMs: int(env, 'BUSY_TIMEOUT_MS', 1000),
+    requestTimeoutMs: int(env, 'REQUEST_TIMEOUT_MS', 10_000, { min: 100 }),
+  };
+  let apiHost;
+  try {
+    const u = new URL(cfg.apiUrl);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('protokol');
+    apiHost = u.hostname.replace(/^\[|\]$/g, '');
+    cfg.apiUrl = u.origin;
+  } catch {
+    throw new Error(`API_URL tidak valid: ${cfg.apiUrl}`);
+  }
+  const remote = !isLoopbackHost(cfg.host) || !isLoopbackHost(apiHost);
+  if (remote) {
+    if (cfg.allowFaultInjection) {
+      throw new Error('ALLOW_FAULT_INJECTION=1 hanya boleh dengan DASHBOARD_HOST dan API_URL loopback');
+    }
+    if (!cfg.allowRemote) {
+      throw new Error(
+        `DASHBOARD_HOST=${cfg.host} / API_URL=${cfg.apiUrl} bukan loopback. Dashboard tanpa autentikasi; set ALLOW_REMOTE=1 kalau memang disengaja`,
+      );
+    }
+  }
+  return cfg;
+}

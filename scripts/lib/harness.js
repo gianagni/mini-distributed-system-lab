@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 export const API_SCRIPT = join(ROOT, 'src', 'api.js');
 export const WORKER_SCRIPT = join(ROOT, 'src', 'worker.js');
+export const DASHBOARD_SCRIPT = join(ROOT, 'src', 'dashboard.js');
 
 // Semua child process dibunuh saat proses induk (test/eksperimen) keluar,
 // supaya run berikutnya tidak mewarisi worker yatim.
@@ -98,6 +99,13 @@ export async function startApi(env) {
 export async function startWorker(env, name = env.WORKER_ID ?? 'worker') {
   const p = startProcess(WORKER_SCRIPT, env, name);
   await p.waitFor((x) => x.event === 'worker_started');
+  return p;
+}
+
+export async function startDashboard(env) {
+  const p = startProcess(DASHBOARD_SCRIPT, { DASHBOARD_PORT: '0', ...env }, 'dashboard');
+  const e = await p.waitFor((x) => x.event === 'dashboard_listening');
+  p.url = `http://127.0.0.1:${e.port}`;
   return p;
 }
 

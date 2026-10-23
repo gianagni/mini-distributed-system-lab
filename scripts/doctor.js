@@ -5,7 +5,7 @@ import { mkdirSync, rmSync, statfsSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { arch, cpus, freemem, platform, release } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { loadConfig } from '../src/config.js';
+import { loadConfig, loadDashboardConfig } from '../src/config.js';
 
 const results = [];
 const check = (name, ok, detail) => results.push({ name, ok, detail });
@@ -60,6 +60,22 @@ if (cfg) {
     });
     check(`Port ${cfg.host}:${cfg.port} bebas`, free === true, free === true ? 'bebas' : `${free} (API lain sudah jalan?)`);
   }
+}
+
+// Dashboard (npm run dashboard / npm run lab). Port terpakai hanya peringatan kalau dashboard memang sedang jalan.
+try {
+  const d = loadDashboardConfig();
+  check('Konfigurasi dashboard valid', true, `DASHBOARD=${d.host}:${d.port} API_URL=${d.apiUrl}`);
+  if (d.port !== 0) {
+    const free = await new Promise((res) => {
+      const srv = createServer();
+      srv.once('error', (e) => res(e.code));
+      srv.listen(d.port, d.host, () => srv.close(() => res(true)));
+    });
+    check(`Port dashboard ${d.host}:${d.port} bebas`, free === true, free === true ? 'bebas' : `${free} (dashboard lain sudah jalan?)`);
+  }
+} catch (err) {
+  check('Konfigurasi dashboard valid', false, err.message);
 }
 
 console.log(`Platform: ${platform()} ${release()} ${arch()}, ${cpus().length} CPU, RAM bebas ${(freemem() / 2 ** 30).toFixed(1)} GiB`);

@@ -10,6 +10,8 @@
   "scripts": {
     "api": "node --disable-warning=ExperimentalWarning src/api.js",
     "worker": "node --disable-warning=ExperimentalWarning src/worker.js",
+    "dashboard": "node --disable-warning=ExperimentalWarning src/dashboard.js",
+    "lab": "node --disable-warning=ExperimentalWarning scripts/lab.js",
     "test": "node --disable-warning=ExperimentalWarning --test --test-concurrency=1 \"test/*.test.js\"",
     "experiment": "node --disable-warning=ExperimentalWarning scripts/experiment.js",
     "check": "node --disable-warning=ExperimentalWarning scripts/check-consistency.js",
