@@ -1,0 +1,1269 @@
+{
+  "startedAt": "2026-10-22T18:37:19.736Z",
+  "finishedAt": "2026-10-22T18:41:40.482Z",
+  "reps": 3,
+  "seed": 42,
+  "codeVersion": "tidak diketahui (bukan git checkout)",
+  "env": {
+    "node": "v22.23.3",
+    "platform": "linux",
+    "release": "6.18.54-instabox",
+    "arch": "x64",
+    "cpus": 4,
+    "cpuModel": "AMD EPYC",
+    "ramGiB": 8
+  },
+  "common": {
+    "LEASE_MS": "1000",
+    "HEARTBEAT_MS": "250",
+    "BUSY_TIMEOUT_MS": "300",
+    "BACKOFF_BASE_MS": "100",
+    "BACKOFF_CAP_MS": "1000",
+    "POLL_MS": "20",
+    "ALLOW_FAULT_INJECTION": "1",
+    "MAX_PENDING": "100000"
+  },
+  "configs": [
+    {
+      "key": "baseline",
+      "label": "Baseline",
+      "env": {
+        "RECOVERY": "0",
+        "MAX_ATTEMPTS": "1",
+        "JOB_TIMEOUT_MS": "0"
+      }
+    },
+    {
+      "key": "retry",
+      "label": "+ retry saja",
+      "env": {
+        "RECOVERY": "0",
+        "MAX_ATTEMPTS": "3",
+        "JOB_TIMEOUT_MS": "0"
+      }
+    },
+    {
+      "key": "timeout",
+      "label": "+ timeout saja",
+      "env": {
+        "RECOVERY": "0",
+        "MAX_ATTEMPTS": "1",
+        "JOB_TIMEOUT_MS": "1000"
+      }
+    },
+    {
+      "key": "recovery",
+      "label": "+ lease recovery saja",
+      "env": {
+        "RECOVERY": "1",
+        "MAX_ATTEMPTS": "1",
+        "JOB_TIMEOUT_MS": "0"
+      }
+    },
+    {
+      "key": "improved",
+      "label": "Semua (improved)",
+      "env": {
+        "RECOVERY": "1",
+        "MAX_ATTEMPTS": "3",
+        "JOB_TIMEOUT_MS": "1000"
+      }
+    }
+  ],
+  "plan": {
+    "clean": 127,
+    "transient1": 50,
+    "transient2": 15,
+    "permanent": 4,
+    "hang": 4
+  },
+  "ablation": [
+    {
+      "config": "baseline",
+      "finalMs": null,
+      "succeeded": 125,
+      "failed": 63,
+      "stuck": 12,
+      "stuckPendingReady": 7,
+      "stuckRunning": 5,
+      "runningWithExpiredLease": 2,
+      "oldestRunningAgeMs": 14095,
+      "oldestReadyPendingAgeMs": 14813,
+      "peakReadyQueue": 192,
+      "totalAttempts": 193,
+      "retries": 0,
+      "leaseReclaims": 0,
+      "duplicateSuccessJobs": 0,
+      "failedByErrorClass": {
+        "PERMANENT": 4,
+        "TRANSIENT": 59
+      },
+      "e2eP50": 2346,
+      "e2eP95": 6084,
+      "byCategory": {
+        "clean": {
+          "n": 127,
+          "SUCCEEDED": 125,
+          "FAILED": 0,
+          "STUCK": 2
+        },
+        "transient1": {
+          "n": 50,
+          "SUCCEEDED": 0,
+          "FAILED": 44,
+          "STUCK": 6
+        },
+        "transient2": {
+          "n": 15,
+          "SUCCEEDED": 0,
+          "FAILED": 15,
+          "STUCK": 0
+        },
+        "permanent": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        },
+        "hang": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 0,
+          "STUCK": 4
+        }
+      },
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {
+          "running_lease_expired": 2
+        }
+      },
+      "rep": 1
+    },
+    {
+      "config": "retry",
+      "finalMs": null,
+      "succeeded": 125,
+      "failed": 4,
+      "stuck": 71,
+      "stuckPendingReady": 66,
+      "stuckRunning": 5,
+      "runningWithExpiredLease": 2,
+      "oldestRunningAgeMs": 14159,
+      "oldestReadyPendingAgeMs": 14907,
+      "peakReadyQueue": 194,
+      "totalAttempts": 194,
+      "retries": 60,
+      "leaseReclaims": 0,
+      "duplicateSuccessJobs": 0,
+      "failedByErrorClass": {
+        "PERMANENT": 4
+      },
+      "e2eP50": 2393,
+      "e2eP95": 6142,
+      "byCategory": {
+        "clean": {
+          "n": 127,
+          "SUCCEEDED": 124,
+          "FAILED": 0,
+          "STUCK": 3
+        },
+        "transient1": {
+          "n": 50,
+          "SUCCEEDED": 1,
+          "FAILED": 0,
+          "STUCK": 49
+        },
+        "transient2": {
+          "n": 15,
+          "SUCCEEDED": 0,
+          "FAILED": 0,
+          "STUCK": 15
+        },
+        "permanent": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        },
+        "hang": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 0,
+          "STUCK": 4
+        }
+      },
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {
+          "running_lease_expired": 2
+        }
+      },
+      "rep": 1
+    },
+    {
+      "config": "timeout",
+      "finalMs": null,
+      "succeeded": 126,
+      "failed": 72,
+      "stuck": 2,
+      "stuckPendingReady": 0,
+      "stuckRunning": 2,
+      "runningWithExpiredLease": 2,
+      "oldestRunningAgeMs": 14129,
+      "oldestReadyPendingAgeMs": null,
+      "peakReadyQueue": 194,
+      "totalAttempts": 200,
+      "retries": 0,
+      "leaseReclaims": 0,
+      "duplicateSuccessJobs": 0,
+      "failedByErrorClass": {
+        "PERMANENT": 4,
+        "TIMEOUT": 3,
+        "TRANSIENT": 65
+      },
+      "e2eP50": 2488,
+      "e2eP95": 4841,
+      "byCategory": {
+        "clean": {
+          "n": 127,
+          "SUCCEEDED": 126,
+          "FAILED": 0,
+          "STUCK": 1
+        },
+        "transient1": {
+          "n": 50,
+          "SUCCEEDED": 0,
+          "FAILED": 50,
+          "STUCK": 0
+        },
+        "transient2": {
+          "n": 15,
+          "SUCCEEDED": 0,
+          "FAILED": 15,
+          "STUCK": 0
+        },
+        "permanent": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        },
+        "hang": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 3,
+          "STUCK": 1
+        }
+      },
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {
+          "running_lease_expired": 2
+        }
+      },
+      "rep": 1
+    },
+    {
+      "config": "recovery",
+      "finalMs": null,
+      "succeeded": 125,
+      "failed": 65,
+      "stuck": 10,
+      "stuckPendingReady": 7,
+      "stuckRunning": 3,
+      "runningWithExpiredLease": 0,
+      "oldestRunningAgeMs": 13061,
+      "oldestReadyPendingAgeMs": 14914,
+      "peakReadyQueue": 194,
+      "totalAttempts": 193,
+      "retries": 0,
+      "leaseReclaims": 2,
+      "duplicateSuccessJobs": 0,
+      "failedByErrorClass": {
+        "PERMANENT": 4,
+        "TRANSIENT": 59,
+        "WORKER_LOST": 2
+      },
+      "e2eP50": 2086,
+      "e2eP95": 5842,
+      "byCategory": {
+        "clean": {
+          "n": 127,
+          "SUCCEEDED": 125,
+          "FAILED": 0,
+          "STUCK": 2
+        },
+        "transient1": {
+          "n": 50,
+          "SUCCEEDED": 0,
+          "FAILED": 45,
+          "STUCK": 5
+        },
+        "transient2": {
+          "n": 15,
+          "SUCCEEDED": 0,
+          "FAILED": 15,
+          "STUCK": 0
+        },
+        "permanent": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        },
+        "hang": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 1,
+          "STUCK": 3
+        }
+      },
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 1
+    },
+    {
+      "config": "improved",
+      "finalMs": 9928,
+      "succeeded": 192,
+      "failed": 8,
+      "stuck": 0,
+      "stuckPendingReady": 0,
+      "stuckRunning": 0,
+      "runningWithExpiredLease": 0,
+      "oldestRunningAgeMs": null,
+      "oldestReadyPendingAgeMs": null,
+      "peakReadyQueue": 196,
+      "totalAttempts": 288,
+      "retries": 86,
+      "leaseReclaims": 2,
+      "duplicateSuccessJobs": 0,
+      "failedByErrorClass": {
+        "PERMANENT": 4,
+        "TIMEOUT": 4
+      },
+      "e2eP50": 3603,
+      "e2eP95": 7802,
+      "byCategory": {
+        "clean": {
+          "n": 127,
+          "SUCCEEDED": 127,
+          "FAILED": 0,
+          "STUCK": 0
+        },
+        "transient1": {
+          "n": 50,
+          "SUCCEEDED": 50,
+          "FAILED": 0,
+          "STUCK": 0
+        },
+        "transient2": {
+          "n": 15,
+          "SUCCEEDED": 15,
+          "FAILED": 0,
+          "STUCK": 0
+        },
+        "permanent": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        },
+        "hang": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        }
+      },
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 1
+    },
+    {
+      "config": "baseline",
+      "finalMs": null,
+      "succeeded": 125,
+      "failed": 63,
+      "stuck": 12,
+      "stuckPendingReady": 7,
+      "stuckRunning": 5,
+      "runningWithExpiredLease": 2,
+      "oldestRunningAgeMs": 14133,
+      "oldestReadyPendingAgeMs": 14905,
+      "peakReadyQueue": 194,
+      "totalAttempts": 193,
+      "retries": 0,
+      "leaseReclaims": 0,
+      "duplicateSuccessJobs": 0,
+      "failedByErrorClass": {
+        "PERMANENT": 4,
+        "TRANSIENT": 59
+      },
+      "e2eP50": 2077,
+      "e2eP95": 5843,
+      "byCategory": {
+        "clean": {
+          "n": 127,
+          "SUCCEEDED": 125,
+          "FAILED": 0,
+          "STUCK": 2
+        },
+        "transient1": {
+          "n": 50,
+          "SUCCEEDED": 0,
+          "FAILED": 44,
+          "STUCK": 6
+        },
+        "transient2": {
+          "n": 15,
+          "SUCCEEDED": 0,
+          "FAILED": 15,
+          "STUCK": 0
+        },
+        "permanent": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        },
+        "hang": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 0,
+          "STUCK": 4
+        }
+      },
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {
+          "running_lease_expired": 2
+        }
+      },
+      "rep": 2
+    },
+    {
+      "config": "retry",
+      "finalMs": null,
+      "succeeded": 99,
+      "failed": 4,
+      "stuck": 97,
+      "stuckPendingReady": 92,
+      "stuckRunning": 5,
+      "runningWithExpiredLease": 2,
+      "oldestRunningAgeMs": 14227,
+      "oldestReadyPendingAgeMs": 15008,
+      "peakReadyQueue": 194,
+      "totalAttempts": 154,
+      "retries": 46,
+      "leaseReclaims": 0,
+      "duplicateSuccessJobs": 0,
+      "failedByErrorClass": {
+        "PERMANENT": 4
+      },
+      "e2eP50": 2084,
+      "e2eP95": 5648,
+      "byCategory": {
+        "clean": {
+          "n": 127,
+          "SUCCEEDED": 99,
+          "FAILED": 0,
+          "STUCK": 28
+        },
+        "transient1": {
+          "n": 50,
+          "SUCCEEDED": 0,
+          "FAILED": 0,
+          "STUCK": 50
+        },
+        "transient2": {
+          "n": 15,
+          "SUCCEEDED": 0,
+          "FAILED": 0,
+          "STUCK": 15
+        },
+        "permanent": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        },
+        "hang": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 0,
+          "STUCK": 4
+        }
+      },
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {
+          "running_lease_expired": 2
+        }
+      },
+      "rep": 2
+    },
+    {
+      "config": "timeout",
+      "finalMs": null,
+      "succeeded": 127,
+      "failed": 71,
+      "stuck": 2,
+      "stuckPendingReady": 0,
+      "stuckRunning": 2,
+      "runningWithExpiredLease": 2,
+      "oldestRunningAgeMs": 14214,
+      "oldestReadyPendingAgeMs": null,
+      "peakReadyQueue": 194,
+      "totalAttempts": 200,
+      "retries": 0,
+      "leaseReclaims": 0,
+      "duplicateSuccessJobs": 0,
+      "failedByErrorClass": {
+        "PERMANENT": 4,
+        "TIMEOUT": 3,
+        "TRANSIENT": 64
+      },
+      "e2eP50": 2483,
+      "e2eP95": 4844,
+      "byCategory": {
+        "clean": {
+          "n": 127,
+          "SUCCEEDED": 127,
+          "FAILED": 0,
+          "STUCK": 0
+        },
+        "transient1": {
+          "n": 50,
+          "SUCCEEDED": 0,
+          "FAILED": 49,
+          "STUCK": 1
+        },
+        "transient2": {
+          "n": 15,
+          "SUCCEEDED": 0,
+          "FAILED": 15,
+          "STUCK": 0
+        },
+        "permanent": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        },
+        "hang": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 3,
+          "STUCK": 1
+        }
+      },
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {
+          "running_lease_expired": 2
+        }
+      },
+      "rep": 2
+    },
+    {
+      "config": "recovery",
+      "finalMs": null,
+      "succeeded": 124,
+      "failed": 66,
+      "stuck": 10,
+      "stuckPendingReady": 7,
+      "stuckRunning": 3,
+      "runningWithExpiredLease": 0,
+      "oldestRunningAgeMs": 12835,
+      "oldestReadyPendingAgeMs": 14992,
+      "peakReadyQueue": 194,
+      "totalAttempts": 193,
+      "retries": 0,
+      "leaseReclaims": 2,
+      "duplicateSuccessJobs": 0,
+      "failedByErrorClass": {
+        "PERMANENT": 4,
+        "TRANSIENT": 60,
+        "WORKER_LOST": 2
+      },
+      "e2eP50": 2366,
+      "e2eP95": 6134,
+      "byCategory": {
+        "clean": {
+          "n": 127,
+          "SUCCEEDED": 124,
+          "FAILED": 1,
+          "STUCK": 2
+        },
+        "transient1": {
+          "n": 50,
+          "SUCCEEDED": 0,
+          "FAILED": 45,
+          "STUCK": 5
+        },
+        "transient2": {
+          "n": 15,
+          "SUCCEEDED": 0,
+          "FAILED": 15,
+          "STUCK": 0
+        },
+        "permanent": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        },
+        "hang": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 1,
+          "STUCK": 3
+        }
+      },
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 2
+    },
+    {
+      "config": "improved",
+      "finalMs": 10275,
+      "succeeded": 192,
+      "failed": 8,
+      "stuck": 0,
+      "stuckPendingReady": 0,
+      "stuckRunning": 0,
+      "runningWithExpiredLease": 0,
+      "oldestRunningAgeMs": null,
+      "oldestReadyPendingAgeMs": null,
+      "peakReadyQueue": 196,
+      "totalAttempts": 290,
+      "retries": 88,
+      "leaseReclaims": 2,
+      "duplicateSuccessJobs": 0,
+      "failedByErrorClass": {
+        "PERMANENT": 4,
+        "TIMEOUT": 4
+      },
+      "e2eP50": 3741,
+      "e2eP95": 7854,
+      "byCategory": {
+        "clean": {
+          "n": 127,
+          "SUCCEEDED": 127,
+          "FAILED": 0,
+          "STUCK": 0
+        },
+        "transient1": {
+          "n": 50,
+          "SUCCEEDED": 50,
+          "FAILED": 0,
+          "STUCK": 0
+        },
+        "transient2": {
+          "n": 15,
+          "SUCCEEDED": 15,
+          "FAILED": 0,
+          "STUCK": 0
+        },
+        "permanent": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        },
+        "hang": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        }
+      },
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 2
+    },
+    {
+      "config": "baseline",
+      "finalMs": null,
+      "succeeded": 99,
+      "failed": 50,
+      "stuck": 51,
+      "stuckPendingReady": 46,
+      "stuckRunning": 5,
+      "runningWithExpiredLease": 2,
+      "oldestRunningAgeMs": 14192,
+      "oldestReadyPendingAgeMs": 14978,
+      "peakReadyQueue": 196,
+      "totalAttempts": 154,
+      "retries": 0,
+      "leaseReclaims": 0,
+      "duplicateSuccessJobs": 0,
+      "failedByErrorClass": {
+        "PERMANENT": 4,
+        "TRANSIENT": 46
+      },
+      "e2eP50": 2067,
+      "e2eP95": 5648,
+      "byCategory": {
+        "clean": {
+          "n": 127,
+          "SUCCEEDED": 99,
+          "FAILED": 0,
+          "STUCK": 28
+        },
+        "transient1": {
+          "n": 50,
+          "SUCCEEDED": 0,
+          "FAILED": 33,
+          "STUCK": 17
+        },
+        "transient2": {
+          "n": 15,
+          "SUCCEEDED": 0,
+          "FAILED": 13,
+          "STUCK": 2
+        },
+        "permanent": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        },
+        "hang": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 0,
+          "STUCK": 4
+        }
+      },
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {
+          "running_lease_expired": 2
+        }
+      },
+      "rep": 3
+    },
+    {
+      "config": "retry",
+      "finalMs": null,
+      "succeeded": 125,
+      "failed": 4,
+      "stuck": 71,
+      "stuckPendingReady": 66,
+      "stuckRunning": 5,
+      "runningWithExpiredLease": 2,
+      "oldestRunningAgeMs": 14199,
+      "oldestReadyPendingAgeMs": 14974,
+      "peakReadyQueue": 196,
+      "totalAttempts": 193,
+      "retries": 59,
+      "leaseReclaims": 0,
+      "duplicateSuccessJobs": 0,
+      "failedByErrorClass": {
+        "PERMANENT": 4
+      },
+      "e2eP50": 2370,
+      "e2eP95": 6144,
+      "byCategory": {
+        "clean": {
+          "n": 127,
+          "SUCCEEDED": 125,
+          "FAILED": 0,
+          "STUCK": 2
+        },
+        "transient1": {
+          "n": 50,
+          "SUCCEEDED": 0,
+          "FAILED": 0,
+          "STUCK": 50
+        },
+        "transient2": {
+          "n": 15,
+          "SUCCEEDED": 0,
+          "FAILED": 0,
+          "STUCK": 15
+        },
+        "permanent": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        },
+        "hang": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 0,
+          "STUCK": 4
+        }
+      },
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {
+          "running_lease_expired": 2
+        }
+      },
+      "rep": 3
+    },
+    {
+      "config": "timeout",
+      "finalMs": null,
+      "succeeded": 125,
+      "failed": 73,
+      "stuck": 2,
+      "stuckPendingReady": 0,
+      "stuckRunning": 2,
+      "runningWithExpiredLease": 2,
+      "oldestRunningAgeMs": 14200,
+      "oldestReadyPendingAgeMs": null,
+      "peakReadyQueue": 196,
+      "totalAttempts": 200,
+      "retries": 0,
+      "leaseReclaims": 0,
+      "duplicateSuccessJobs": 0,
+      "failedByErrorClass": {
+        "PERMANENT": 4,
+        "TIMEOUT": 4,
+        "TRANSIENT": 65
+      },
+      "e2eP50": 2627,
+      "e2eP95": 4914,
+      "byCategory": {
+        "clean": {
+          "n": 127,
+          "SUCCEEDED": 125,
+          "FAILED": 0,
+          "STUCK": 2
+        },
+        "transient1": {
+          "n": 50,
+          "SUCCEEDED": 0,
+          "FAILED": 50,
+          "STUCK": 0
+        },
+        "transient2": {
+          "n": 15,
+          "SUCCEEDED": 0,
+          "FAILED": 15,
+          "STUCK": 0
+        },
+        "permanent": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        },
+        "hang": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        }
+      },
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {
+          "running_lease_expired": 2
+        }
+      },
+      "rep": 3
+    },
+    {
+      "config": "recovery",
+      "finalMs": null,
+      "succeeded": 99,
+      "failed": 52,
+      "stuck": 49,
+      "stuckPendingReady": 46,
+      "stuckRunning": 3,
+      "runningWithExpiredLease": 0,
+      "oldestRunningAgeMs": 14139,
+      "oldestReadyPendingAgeMs": 14964,
+      "peakReadyQueue": 196,
+      "totalAttempts": 154,
+      "retries": 0,
+      "leaseReclaims": 2,
+      "duplicateSuccessJobs": 0,
+      "failedByErrorClass": {
+        "PERMANENT": 4,
+        "TRANSIENT": 46,
+        "WORKER_LOST": 2
+      },
+      "e2eP50": 2069,
+      "e2eP95": 5641,
+      "byCategory": {
+        "clean": {
+          "n": 127,
+          "SUCCEEDED": 99,
+          "FAILED": 1,
+          "STUCK": 27
+        },
+        "transient1": {
+          "n": 50,
+          "SUCCEEDED": 0,
+          "FAILED": 34,
+          "STUCK": 16
+        },
+        "transient2": {
+          "n": 15,
+          "SUCCEEDED": 0,
+          "FAILED": 13,
+          "STUCK": 2
+        },
+        "permanent": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        },
+        "hang": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 0,
+          "STUCK": 4
+        }
+      },
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 3
+    },
+    {
+      "config": "improved",
+      "finalMs": 10324,
+      "succeeded": 192,
+      "failed": 8,
+      "stuck": 0,
+      "stuckPendingReady": 0,
+      "stuckRunning": 0,
+      "runningWithExpiredLease": 0,
+      "oldestRunningAgeMs": null,
+      "oldestReadyPendingAgeMs": null,
+      "peakReadyQueue": 196,
+      "totalAttempts": 288,
+      "retries": 86,
+      "leaseReclaims": 2,
+      "duplicateSuccessJobs": 0,
+      "failedByErrorClass": {
+        "PERMANENT": 4,
+        "TIMEOUT": 4
+      },
+      "e2eP50": 3903,
+      "e2eP95": 8064,
+      "byCategory": {
+        "clean": {
+          "n": 127,
+          "SUCCEEDED": 127,
+          "FAILED": 0,
+          "STUCK": 0
+        },
+        "transient1": {
+          "n": 50,
+          "SUCCEEDED": 50,
+          "FAILED": 0,
+          "STUCK": 0
+        },
+        "transient2": {
+          "n": 15,
+          "SUCCEEDED": 15,
+          "FAILED": 0,
+          "STUCK": 0
+        },
+        "permanent": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        },
+        "hang": {
+          "n": 4,
+          "SUCCEEDED": 0,
+          "FAILED": 4,
+          "STUCK": 0
+        }
+      },
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 3
+    }
+  ],
+  "drain": [
+    {
+      "workload": "light",
+      "workers": 1,
+      "n": 1000,
+      "drainMs": 203,
+      "jobsPerSec": 4926,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 1
+    },
+    {
+      "workload": "light",
+      "workers": 2,
+      "n": 1000,
+      "drainMs": 229,
+      "jobsPerSec": 4367,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 1
+    },
+    {
+      "workload": "light",
+      "workers": 4,
+      "n": 1000,
+      "drainMs": 251,
+      "jobsPerSec": 3984,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 1
+    },
+    {
+      "workload": "io",
+      "workers": 1,
+      "n": 300,
+      "drainMs": 6267,
+      "jobsPerSec": 48,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 1
+    },
+    {
+      "workload": "io",
+      "workers": 2,
+      "n": 300,
+      "drainMs": 3145,
+      "jobsPerSec": 95,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 1
+    },
+    {
+      "workload": "io",
+      "workers": 4,
+      "n": 300,
+      "drainMs": 1579,
+      "jobsPerSec": 190,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 1
+    },
+    {
+      "workload": "light",
+      "workers": 1,
+      "n": 1000,
+      "drainMs": 221,
+      "jobsPerSec": 4525,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 2
+    },
+    {
+      "workload": "light",
+      "workers": 2,
+      "n": 1000,
+      "drainMs": 239,
+      "jobsPerSec": 4184,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 2
+    },
+    {
+      "workload": "light",
+      "workers": 4,
+      "n": 1000,
+      "drainMs": 280,
+      "jobsPerSec": 3571,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 2
+    },
+    {
+      "workload": "io",
+      "workers": 1,
+      "n": 300,
+      "drainMs": 6303,
+      "jobsPerSec": 48,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 2
+    },
+    {
+      "workload": "io",
+      "workers": 2,
+      "n": 300,
+      "drainMs": 3125,
+      "jobsPerSec": 96,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 2
+    },
+    {
+      "workload": "io",
+      "workers": 4,
+      "n": 300,
+      "drainMs": 1563,
+      "jobsPerSec": 192,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 2
+    },
+    {
+      "workload": "light",
+      "workers": 1,
+      "n": 1000,
+      "drainMs": 212,
+      "jobsPerSec": 4717,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 3
+    },
+    {
+      "workload": "light",
+      "workers": 2,
+      "n": 1000,
+      "drainMs": 256,
+      "jobsPerSec": 3906,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 3
+    },
+    {
+      "workload": "light",
+      "workers": 4,
+      "n": 1000,
+      "drainMs": 305,
+      "jobsPerSec": 3279,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 3
+    },
+    {
+      "workload": "io",
+      "workers": 1,
+      "n": 300,
+      "drainMs": 6234,
+      "jobsPerSec": 48,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 3
+    },
+    {
+      "workload": "io",
+      "workers": 2,
+      "n": 300,
+      "drainMs": 3117,
+      "jobsPerSec": 96,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 3
+    },
+    {
+      "workload": "io",
+      "workers": 4,
+      "n": 300,
+      "drainMs": 1557,
+      "jobsPerSec": 193,
+      "consistency": {
+        "violations": 0,
+        "violationRules": {},
+        "warnings": {}
+      },
+      "rep": 3
+    }
+  ],
+  "post": {
+    "n": 1000,
+    "postP50": 0.27,
+    "postP95": 1.42,
+    "postP99": 3.64,
+    "clientRatePerSec": 2157,
+    "consistency": {
+      "violations": 0,
+      "violationRules": {},
+      "warnings": {
+        "report_before_commit": 53,
+        "temp_file_left": 1
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "mini-job-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capstone Bab 10: mini distributed system (API + worker + SQLite) dengan fokus reliability dan observability.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "api": "node --disable-warning=ExperimentalWarning src/api.js",
+    "worker": "node --disable-warning=ExperimentalWarning src/worker.js",
+    "test": "node --disable-warning=ExperimentalWarning --test --test-concurrency=1 \"test/*.test.js\"",
+    "experiment": "node --disable-warning=ExperimentalWarning scripts/experiment.js",
+    "check": "node --disable-warning=ExperimentalWarning scripts/check-consistency.js",
+    "doctor": "node --disable-warning=ExperimentalWarning scripts/doctor.js",
+    "clean": "node --disable-warning=ExperimentalWarning scripts/clean.js",
+    "compare": "node scripts/compare-results.js"
+  }
+}
