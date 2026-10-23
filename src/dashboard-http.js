@@ -6,6 +6,8 @@ import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { isBusyError } from './db.js';
 import { HttpError } from './errors.js';
+import { createHostGuard } from './hostguard.js';
+import { isJsonContentType } from './http.js';
 import { ERROR_CLASSES, STATUSES, getJobDetail, getOverview, listJobs, parseCursor } from './readmodel.js';
 
 // Proses dashboard: file statis + endpoint read-only + proxy POST /jobs ke API.
@@ -122,6 +124,7 @@ function parseListQuery(sp) {
 
 export function createDashboardServer({ cfg, log, staticFiles = loadStaticFiles() }) {
   const dbh = createDbHandle(cfg);
+  const guard = createHostGuard({ bindHost: cfg.host, allowedHosts: cfg.allowedHosts ?? [] });
   let apiHealth = { at: 0, value: null };
 
   async function checkApi() {
@@ -137,31 +140,27 @@ export function createDashboardServer({ cfg, log, staticFiles = loadStaticFiles(
     return value;
   }
 
-  // DNS rebinding: halaman dari domain lain yang di-resolve ke 127.0.0.1 akan mengirim Host domain itu.
+  // DNS rebinding (AUDIT S-2). Allowlist yang sama dengan API, selalu aktif: ALLOW_REMOTE hanya
+  // mengizinkan bind non-loopback, tidak lagi mematikan pemeriksaan ini.
   function checkHost(req, server) {
-    if (cfg.allowRemote) return;
-    const port = server.address()?.port;
-    const allowed = new Set(['127.0.0.1', 'localhost', '[::1]', cfg.host].map((h) => `${h}:${port}`));
-    if (!allowed.has(String(req.headers.host ?? '').toLowerCase())) {
-      throw new HttpError(403, 'BAD_HOST', 'Host header tidak dikenal. Buka dashboard lewat 127.0.0.1 atau localhost.');
+    if (!guard.hostOk(req.headers.host, server.address()?.port)) {
+      log.warn('host_rejected', { method: req.method, host: String(req.headers.host ?? '').slice(0, 100) });
+      throw new HttpError(
+        403,
+        'BAD_HOST',
+        'Host header tidak diizinkan. Buka dashboard lewat 127.0.0.1/localhost, atau tambahkan nama/port ke ALLOWED_HOSTS.',
+        { connection: 'close' },
+      );
     }
   }
 
   // CSRF: wajib JSON (cross-origin JSON butuh preflight CORS yang tidak pernah kita jawab),
   // dan Origin/Sec-Fetch-Site (kalau dikirim browser) harus same-origin.
   function checkSameOrigin(req) {
-    const ct = String(req.headers['content-type'] ?? '');
-    if (!/^application\/json\b/i.test(ct)) {
+    if (!isJsonContentType(req.headers['content-type'])) {
       throw new HttpError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Content-Type harus application/json');
     }
-    const origin = req.headers.origin;
-    if (origin !== undefined && origin !== `http://${req.headers.host}`) {
-      throw new HttpError(403, 'CROSS_ORIGIN', 'Request dari origin lain ditolak');
-    }
-    const site = req.headers['sec-fetch-site'];
-    if (site !== undefined && site !== 'same-origin' && site !== 'none') {
-      throw new HttpError(403, 'CROSS_ORIGIN', 'Request dari origin lain ditolak');
-    }
+    if (!guard.sameOriginOk(req)) throw new HttpError(403, 'CROSS_ORIGIN', 'Request dari origin lain ditolak');
   }
 
   async function proxyCreateJob(req, send) {

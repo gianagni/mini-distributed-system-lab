@@ -198,7 +198,7 @@ function rawRequest(url, data, { closeAfterMs } = {}) {
 
 test('URL malformed tidak mematikan API (dulu: crash proses)', async (t) => {
   const s = await setup(t, {}, { workers: 0 });
-  const status = await rawRequest(s.api.url, 'GET //[ HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n');
+  const status = await rawRequest(s.api.url, `GET //[ HTTP/1.1\r\nHost: ${new URL(s.api.url).host}\r\nConnection: close\r\n\r\n`);
   assert.equal(status, 'HTTP/1.1 400 Bad Request');
   assert.equal((await s.get('/healthz')).status, 200);
   assert.equal(s.api.child.exitCode, null);
@@ -206,7 +206,7 @@ test('URL malformed tidak mematikan API (dulu: crash proses)', async (t) => {
 
 test('client putus di tengah body: tidak ada job, tercatat warning, API sehat', async (t) => {
   const s = await setup(t, {}, { workers: 0 });
-  await rawRequest(s.api.url, 'POST /jobs HTTP/1.1\r\nHost: x\r\nContent-Length: 500\r\n\r\n{"type":"order', {
+  await rawRequest(s.api.url, `POST /jobs HTTP/1.1\r\nHost: ${new URL(s.api.url).host}\r\nContent-Length: 500\r\n\r\n{"type":"order`, {
     closeAfterMs: 50,
   });
   await s.api.waitFor((e) => e.event === 'client_aborted');
@@ -219,7 +219,7 @@ test('client putus sebelum menerima respons: retry dengan Idempotency-Key tidak 
   const body = JSON.stringify(report());
   await rawRequest(
     s.api.url,
-    `POST /jobs HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\nIdempotency-Key: k-putus\r\n` +
+    `POST /jobs HTTP/1.1\r\nHost: ${new URL(s.api.url).host}\r\nContent-Type: application/json\r\nIdempotency-Key: k-putus\r\n` +
       `Content-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`,
     { closeAfterMs: 0 },
   );
@@ -240,10 +240,10 @@ test('20 request paralel dengan Idempotency-Key sama: tepat satu job', async (t)
 test('body lambat dihentikan REQUEST_TIMEOUT_MS; Content-Length berlebih ditolak tanpa membaca body', async (t) => {
   const s = await setup(t, { REQUEST_TIMEOUT_MS: '500' }, { workers: 0 });
   const t0 = Date.now();
-  const slow = await rawRequest(s.api.url, 'POST /jobs HTTP/1.1\r\nHost: x\r\nContent-Length: 50\r\n\r\n{');
+  const slow = await rawRequest(s.api.url, `POST /jobs HTTP/1.1\r\nHost: ${new URL(s.api.url).host}\r\nContent-Length: 50\r\n\r\n{`);
   assert.equal(slow, 'HTTP/1.1 408 Request Timeout');
   assert.ok(Date.now() - t0 < 3000);
-  const big = await rawRequest(s.api.url, 'POST /jobs HTTP/1.1\r\nHost: x\r\nContent-Length: 10000000\r\n\r\n{');
+  const big = await rawRequest(s.api.url, `POST /jobs HTTP/1.1\r\nHost: ${new URL(s.api.url).host}\r\nContent-Length: 10000000\r\n\r\n{`);
   assert.equal(big, 'HTTP/1.1 413 Payload Too Large');
   await sleep(50);
   assert.equal((await s.get('/healthz')).status, 200);

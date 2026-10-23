@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { performance } from 'node:perf_hooks';
 import { ClientAbortedError, HttpError, ValidationError } from './errors.js';
+import { createHostGuard } from './hostguard.js';
 import { computeMetrics } from './metrics.js';
 import { createJob, getEvents, getJob } from './store.js';
 import { validateJobRequest } from './task.js';
@@ -73,6 +74,8 @@ async function readJson(req) {
 }
 
 export function createApiServer({ db, cfg, log }) {
+  const guard = createHostGuard({ bindHost: cfg.host, allowedHosts: cfg.allowedHosts ?? [] });
+
   async function route(req, pathname, send) {
     const method = req.method;
 
@@ -94,6 +97,9 @@ export function createApiServer({ db, cfg, log }) {
         throw new ValidationError('Idempotency-Key harus 1-128 karakter [A-Za-z0-9._:-]');
       }
       const body = await readJson(req);
+      // Request browser dari origin lain (AUDIT S-2). Setelah readJson supaya urutan 408/413/415
+      // yang sudah diuji tidak berubah; tetap sebelum validasi dan sebelum job dibuat.
+      if (!guard.sameOriginOk(req)) throw new HttpError(403, 'CROSS_ORIGIN', 'Request dari origin lain ditolak');
       const { type, payload } = validateJobRequest(body, { allowFaultInjection: cfg.allowFaultInjection });
       const requestHash = createHash('sha256').update(JSON.stringify({ type, payload })).digest('hex');
       const { job, created } = createJob(db, {
@@ -147,6 +153,15 @@ export function createApiServer({ db, cfg, log }) {
       res.end(JSON.stringify(body));
     };
     try {
+      // DNS rebinding (AUDIT S-2): Host harus nama yang memang dipakai untuk mencapai API ini.
+      // Dicek sebelum apa pun, termasuk GET, karena halaman hasil rebinding bisa MEMBACA respons.
+      // connection: close supaya body yang belum dibaca tidak diproses di koneksi ini.
+      if (!guard.hostOk(req.headers.host, server.address()?.port)) {
+        log.warn('host_rejected', { method: req.method, host: String(req.headers.host ?? '').slice(0, 100) });
+        throw new HttpError(403, 'BAD_HOST', 'Host header tidak diizinkan. Akses lewat 127.0.0.1/localhost atau tambahkan ke ALLOWED_HOSTS.', {
+          connection: 'close',
+        });
+      }
       // Parsing URL di DALAM try: path seperti "//[" membuat new URL() melempar error.
       // Dulu ini di luar try dan satu request bisa mematikan proses API.
       try {

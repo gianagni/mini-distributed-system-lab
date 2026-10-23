@@ -16,6 +16,7 @@
     "experiment": "node --disable-warning=ExperimentalWarning scripts/experiment.js",
     "check": "node --disable-warning=ExperimentalWarning scripts/check-consistency.js",
     "csrf-check": "node scripts/csrf-check.js",
+    "host-check": "node scripts/host-check.js",
     "doctor": "node --disable-warning=ExperimentalWarning scripts/doctor.js",
     "clean": "node --disable-warning=ExperimentalWarning scripts/clean.js",
     "compare": "node scripts/compare-results.js"

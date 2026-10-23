@@ -1,3 +1,5 @@
+import { parseAllowedHosts } from './hostguard.js';
+
 // Semua konfigurasi dari environment variable, divalidasi saat start.
 // Proses gagal cepat kalau konfigurasi tidak masuk akal (bukan silent default).
 
@@ -23,6 +25,8 @@ export function loadConfig(env = process.env) {
     port: int(env, 'PORT', 3000),
     // API tidak punya autentikasi. Bind ke alamat selain loopback harus disengaja.
     allowRemote: env.ALLOW_REMOTE === '1',
+    // Nama Host tambahan selain loopback (DNS rebinding, AUDIT S-2). Tanpa wildcard.
+    allowedHosts: parseAllowedHosts(env.ALLOWED_HOSTS),
     requestTimeoutMs: int(env, 'REQUEST_TIMEOUT_MS', 10_000, { min: 100 }),
     maxPending: int(env, 'MAX_PENDING', 1000, { min: 1 }),
     maxAttempts: int(env, 'MAX_ATTEMPTS', 3, { min: 1 }),
@@ -73,6 +77,7 @@ export function loadDashboardConfig(env = process.env) {
     port: int(env, 'DASHBOARD_PORT', 3100),
     apiUrl: env.API_URL || `http://127.0.0.1:${int(env, 'PORT', 3000)}`,
     allowRemote: env.ALLOW_REMOTE === '1',
+    allowedHosts: parseAllowedHosts(env.ALLOWED_HOSTS),
     // Hanya menampilkan panel fault injection. API dan worker tetap memvalidasi flag mereka sendiri.
     allowFaultInjection: env.ALLOW_FAULT_INJECTION === '1',
     busyTimeoutMs: int(env, 'BUSY_TIMEOUT_MS', 1000),
