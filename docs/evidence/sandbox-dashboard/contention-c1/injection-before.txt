@@ -1,0 +1,71 @@
+# Fault injection, kode SEBELUM perbaikan (commit 8c78683)
+[windows-log] node v22.22.0 sqlite 3.50.4
+  injected BUSY: [{"begin":2,"errcode":5,"message":"database is locked"},{"begin":3,"errcode":5,"message":"database is locked"}]
+  worker logs (warn/error): [{"level":"error","event":"job_state_write_failed","jobId":"00000000-0000-4000-8000-000000000001","attempt":1,"maxAttempts":3,"errorClass":"INTERNAL","message":"database is locked","writeError":"database is locked"}]
+  job: status=RUNNING attempts=1/3 error=null:null
+  events: created(0) claimed(1)
+  report file on disk: true sha256=e89549d5e40d
+  consistency: violations=0 warnings=["report_before_commit"]
+[windows-log] node v24.22.1 sqlite 3.53.4
+  injected BUSY: [{"begin":2,"errcode":5,"message":"database is locked"},{"begin":3,"errcode":5,"message":"database is locked"}]
+  worker logs (warn/error): [{"level":"error","event":"job_state_write_failed","jobId":"00000000-0000-4000-8000-000000000001","attempt":1,"maxAttempts":3,"errorClass":"INTERNAL","message":"database is locked","writeError":"database is locked"}]
+  job: status=RUNNING attempts=1/3 error=null:null
+  events: created(0) claimed(1)
+  report file on disk: true sha256=e89549d5e40d
+  consistency: violations=0 warnings=["report_before_commit"]
+[success-charged-as-failure] node v22.22.0 sqlite 3.50.4
+  injected BUSY: [{"begin":2,"errcode":5,"message":"database is locked"}]
+  worker logs (warn/error): [{"level":"error","event":"job_failed","jobId":"00000000-0000-4000-8000-000000000001","attempt":1,"maxAttempts":1,"status":"FAILED","errorClass":"INTERNAL","message":"database is locked","durationMs":55}]
+  job: status=FAILED attempts=1/1 error=INTERNAL:database is locked
+  events: created(0) claimed(1) failed(1,INTERNAL)
+  report file on disk: true sha256=e89549d5e40d
+  consistency: violations=0 warnings=["orphan_report"]
+[success-charged-as-failure] node v24.22.1 sqlite 3.53.4
+  injected BUSY: [{"begin":2,"errcode":5,"message":"database is locked"}]
+  worker logs (warn/error): [{"level":"error","event":"job_failed","jobId":"00000000-0000-4000-8000-000000000001","attempt":1,"maxAttempts":1,"status":"FAILED","errorClass":"INTERNAL","message":"database is locked","durationMs":55}]
+  job: status=FAILED attempts=1/1 error=INTERNAL:database is locked
+  events: created(0) claimed(1) failed(1,INTERNAL)
+  report file on disk: true sha256=e89549d5e40d
+  consistency: violations=0 warnings=["orphan_report"]
+[task-fail-write-busy] node v22.22.0 sqlite 3.50.4
+  injected BUSY: [{"begin":2,"errcode":5,"message":"database is locked"}]
+  worker logs (warn/error): [{"level":"error","event":"job_state_write_failed","jobId":"00000000-0000-4000-8000-000000000001","attempt":1,"maxAttempts":3,"errorClass":"TRANSIENT","message":"Simulasi: dependency sementara gagal pada attempt 1","writeError":"database is locked"}]
+  job: status=RUNNING attempts=1/3 error=null:null
+  events: created(0) claimed(1)
+  report file on disk: false
+  consistency: violations=0 warnings=[]
+[task-fail-write-busy] node v24.22.1 sqlite 3.53.4
+  injected BUSY: [{"begin":2,"errcode":5,"message":"database is locked"}]
+  worker logs (warn/error): [{"level":"error","event":"job_state_write_failed","jobId":"00000000-0000-4000-8000-000000000001","attempt":1,"maxAttempts":3,"errorClass":"TRANSIENT","message":"Simulasi: dependency sementara gagal pada attempt 1","writeError":"database is locked"}]
+  job: status=RUNNING attempts=1/3 error=null:null
+  events: created(0) claimed(1)
+  report file on disk: false
+  consistency: violations=0 warnings=[]
+[busy-never-clears] node v22.22.0 sqlite 3.50.4
+  injected BUSY: [{"begin":2,"errcode":5,"message":"database is locked"},{"begin":3,"errcode":5,"message":"database is locked"}]
+  worker logs (warn/error): [{"level":"error","event":"job_state_write_failed","jobId":"00000000-0000-4000-8000-000000000001","attempt":1,"maxAttempts":3,"errorClass":"INTERNAL","message":"database is locked","writeError":"database is locked"}]
+  job: status=RUNNING attempts=1/3 error=null:null
+  events: created(0) claimed(1)
+  report file on disk: true sha256=e89549d5e40d
+  consistency: violations=0 warnings=["report_before_commit"]
+[busy-never-clears] node v24.22.1 sqlite 3.53.4
+  injected BUSY: [{"begin":2,"errcode":5,"message":"database is locked"},{"begin":3,"errcode":5,"message":"database is locked"}]
+  worker logs (warn/error): [{"level":"error","event":"job_state_write_failed","jobId":"00000000-0000-4000-8000-000000000001","attempt":1,"maxAttempts":3,"errorClass":"INTERNAL","message":"database is locked","writeError":"database is locked"}]
+  job: status=RUNNING attempts=1/3 error=null:null
+  events: created(0) claimed(1)
+  report file on disk: true sha256=e89549d5e40d
+  consistency: violations=0 warnings=["report_before_commit"]
+[non-busy-db-error] node v22.22.0 sqlite 3.50.4
+  injected BUSY: [{"begin":2,"errcode":10,"message":"disk I/O error","injected":"IOERR"}]
+  worker logs (warn/error): [{"level":"warn","event":"job_retry_scheduled","jobId":"00000000-0000-4000-8000-000000000001","attempt":1,"maxAttempts":3,"status":"PENDING","errorClass":"INTERNAL","message":"disk I/O error","backoffMs":9,"durationMs":4}]
+  job: status=PENDING attempts=1/3 error=INTERNAL:disk I/O error
+  events: created(0) claimed(1) retry_scheduled(1,INTERNAL)
+  report file on disk: true sha256=e89549d5e40d
+  consistency: violations=0 warnings=["report_before_commit"]
+[non-busy-db-error] node v24.22.1 sqlite 3.53.4
+  injected BUSY: [{"begin":2,"errcode":10,"message":"disk I/O error","injected":"IOERR"}]
+  worker logs (warn/error): [{"level":"warn","event":"job_retry_scheduled","jobId":"00000000-0000-4000-8000-000000000001","attempt":1,"maxAttempts":3,"status":"PENDING","errorClass":"INTERNAL","message":"disk I/O error","backoffMs":5,"durationMs":5}]
+  job: status=PENDING attempts=1/3 error=INTERNAL:disk I/O error
+  events: created(0) claimed(1) retry_scheduled(1,INTERNAL)
+  report file on disk: true sha256=e89549d5e40d
+  consistency: violations=0 warnings=["report_before_commit"]

@@ -128,3 +128,74 @@ Allowlist `Host` membuat 4 test lama di `test/reliability.test.js` gagal karena 
 
 **Status:** kegagalan yang tertangkap (run 22) **terselesaikan**, akar masalah terbukti. Kejadian awal 1/15 **tidak bisa dipastikan sama** karena lognya tidak ada; test ini adalah satu-satunya race yang ditemukan dan kejadian awal juga terjadi saat mesin sibuk, jadi kemungkinan besar sama, tetapi itu **inferensi, bukan bukti**. Dicatat sebagai risiko yang tersisa sampai validasi Windows/`nanad` (yang wajib memakai `npm run test:repeat`) juga bersih.
 
+
+## C-1 (P1): SQLITE_BUSY pada tulisan status dicatat sebagai kegagalan tugas (validasi Windows, 2026-10-24)
+
+**Gejala (Windows x64, Node v24.22.1, SQLite 3.53.4):** `npm test` 83 lulus, 1 gagal, 1 skip (SIGSTOP, wajar). Gagal: `reliability: kontensi: 4 worker polling 1 ms, 150 job` karena worker mencatat `job_state_write_failed` dengan `errorClass: INTERNAL`, `message: database is locked`, `writeError: database is locked`, padahal 150 job akhirnya SUCCEEDED.
+
+### Audit jalur lock
+
+| Jalur | Bentuk tulisan | Perilaku sebelum C-1 | Sesudah C-1 |
+|---|---|---|---|
+| `claimNext` (worker) | `BEGIN IMMEDIATE` | BUSY -> `warn claim_busy`, mundur dengan jitter (P2-11) | Tidak berubah |
+| `extendLease` (heartbeat) | UPDATE autocommit | BUSY -> `error heartbeat_error`, lease tidak diperpanjang | BUSY -> `warn heartbeat_busy` selama lease aman; `error lease_at_risk` kalau heartbeat berikutnya bisa terlambat. Error non-BUSY tetap `error heartbeat_error` |
+| `completeAttempt` | `BEGIN IMMEDIATE` (fenced) | **BUSY tertangkap oleh `catch` tugas**, di-`classify` sebagai `INTERNAL` (retryable), lalu `failAttempt` dipanggil | Retry terbatas khusus BUSY (lihat desain). Tidak pernah menjadi kegagalan tugas |
+| `failAttempt` | `BEGIN IMMEDIATE` (fenced) | BUSY -> `error job_state_write_failed`, job RUNNING sampai lease habis, lalu dicatat `WORKER_LOST` | Retry terbatas khusus BUSY; kegagalan tugas asli tetap tercatat dengan error class aslinya |
+| `createJob` (API) | `BEGIN IMMEDIATE` | BUSY -> **500 INTERNAL** `http_unhandled_error` (tidak bisa dibedakan dari bug, tanpa `Retry-After`) | **503 `DB_BUSY` + `Retry-After: 1`**, `warn db_busy`. Tidak ada job yang dibuat; aman diulang dengan Idempotency-Key |
+| `openDb` (start proses) | PRAGMA + `CREATE TABLE IF NOT EXISTS` | Menunggu `busy_timeout`; gagal start kalau terkunci terus | Tidak berubah (gagal cepat saat start sudah benar) |
+| Dashboard | baca read-only (`BEGIN` snapshot) | BUSY -> 503 `DB_BUSY` | Tidak berubah |
+
+### Akar masalah
+
+Rantai pada log Windows hanya bisa terjadi lewat satu jalur di `src/processor.js` lama: tugas sukses -> `completeAttempt` menunggu lock lebih lama dari `BUSY_TIMEOUT_MS` (200 ms di test) -> `SQLITE_BUSY` dilempar **di dalam blok `try` yang sama dengan tugas** -> `classify()` menganggapnya error tugas tak dikenal (`INTERNAL`, retryable) -> `failAttempt` juga BUSY -> `job_state_write_failed`.
+
+Klasifikasi:
+1. **Bug:** kegagalan *database* saat menulis status diperlakukan sebagai kegagalan *tugas*. Kalau `failAttempt` berhasil, attempt terpakai sebagai `INTERNAL`; dengan attempt habis, **job yang pekerjaannya sukses berakhir FAILED** (dibuktikan di bawah). Pemeriksa konsistensi tidak menangkapnya: hanya warning `orphan_report`.
+2. **Kekurangan strategi kontensi:** claim punya penanganan BUSY (P2-11), tulisan status tidak.
+3. **Ekspektasi test sudah benar.** Test kontensi menangkap masalah nyata; tidak dilonggarkan.
+
+### Reproduksi terkontrol (bukan race)
+
+Koneksi asli dibungkus; untuk `BEGIN IMMEDIATE` ke-n yang dipilih, koneksi SQLite kedua memegang write lock, sehingga SQLite **sungguhan** menunggu `busy_timeout` lalu melempar `SQLITE_BUSY` (errcode 5) tepat di operasi itu. Hasil pada kode lama, identik di Node 22.22.0/SQLite 3.50.4 dan Node 24.22.1/SQLite 3.53.4:
+
+| Skenario | Kode lama | Kode baru |
+|---|---|---|
+| BUSY pada commit lalu pada tulisan fail | Persis log Windows: `job_state_write_failed`, `INTERNAL`, `database is locked`; job RUNNING | 2x `warn state_write_busy`, SUCCEEDED attempt 1, tanpa error |
+| BUSY pada commit, `MAX_ATTEMPTS=1` | **FAILED `INTERNAL "database is locked"`**, padahal file laporan benar sudah tertulis | SUCCEEDED, `result.sha256` = file |
+| Tugas gagal TRANSIENT, tulisan fail BUSY | Tidak tercatat; job RUNNING, nanti tercatat `WORKER_LOST` | `retry_scheduled TRANSIENT` tercatat apa adanya |
+| BUSY tidak pernah lepas | (sama dengan baris 1) | Retry sampai satu periode lease, lalu `error job_state_write_failed reason=retry_window_exhausted`; job RUNNING, attempt tidak terpakai, pulih lewat lease |
+| Error database non-BUSY (disk I/O) | Dicatat `retry_scheduled INTERNAL` (attempt terpakai) | Tidak di-retry: `error job_state_write_failed reason=non_busy_error`, kode asli (10) ikut dicatat |
+| POST /jobs saat DB terkunci | 500 `INTERNAL` | 503 `DB_BUSY` + `Retry-After` |
+
+Kontensi dipaksa dengan proses sungguhan (4 worker, POLL 1 ms, `BUSY_TIMEOUT_MS=1` untuk worker, 150 job, 3 run per versi kode, kode final): kode lama 11-22 `job_state_write_failed`, 25-43 event `INTERNAL "database is locked"`, 14-21 retry dan 11-22 reclaim per run, dan **di satu run 1 job berakhir FAILED** (`WORKER_LOST`) karena attempt habis terpakai oleh error lock; kode baru 150/150 SUCCEEDED, 0 error, 0 retry, 0 reclaim di ketiga run (`docs/evidence/sandbox-dashboard/contention-c1/forced-contention-old-vs-new.txt`).
+
+### Node 22 vs Node 24
+
+- Fault injection: perilaku identik di kedua versi (sebelum dan sesudah perbaikan). `errcode` BUSY = 5 di keduanya; `isBusyError` cocok.
+- Test kontensi asli, 20x per versi di Linux: 0 gagal di Node 22 maupun Node 24 (0-1 `claim_busy` per run). Jadi versi Node/SQLite **bukan** penyebab; frekuensi BUSY yang panjang yang berbeda per platform. Penjelasan untuk Windows (penguncian file Windows dan granularitas sleep busy handler SQLite) adalah **hipotesis**, belum diverifikasi di Windows.
+- Catatan alat ukur: Node 24 memakai reporter `spec` secara default (`ℹ fail 0`), bukan TAP (`# fail 0`). Perbandingan pertama yang memakai grep TAP salah menghitung semua run Node 24 sebagai gagal; diulang dengan `--test-reporter=tap`. `npm run test:repeat` selalu memaksa TAP.
+
+### Desain perbaikan (`src/processor.js`)
+
+1. Fase tugas dan fase tulis status dipisah. Error di fase tulis status tidak pernah di-`classify` sebagai error tugas dan tidak memakai attempt.
+2. Retry **hanya untuk SQLITE_BUSY**, aman karena setiap tulisan adalah satu transaksi atomik (BUSY = tidak ada yang tertulis) dan di-fence `(lease_owner, attempts)`. Durasi satu percobaan diprediksi dari **waktu tunggu BUSY terlama yang benar-benar teramati** (minimal `BUSY_TIMEOUT_MS`) + 25 ms kelonggaran timer. Berhenti kalau: lease diketahui hilang; sisa lease tidak cukup untuk satu percobaan lagi (`lease_too_short`); total retry sejak BUSY pertama akan melewati satu periode lease (`retry_window_exhausted`); atau 50 percobaan (pengaman). Backoff full jitter 5-50 ms. Setiap retry `warn state_write_busy` (dengan `busyWaitMs` aktual); berhenti = `error job_state_write_failed` (nama event lama dipertahankan) dengan `op`, `reason`, `tries`, `retryMs`, `maxBusyWaitMs`, `leaseLeftMs`, `writeErrorCode`.
+3. Percobaan pertama mempertahankan semantik lama (sukses + lease sudah hilang = tidak menulis; gagal = tetap mencoba, fencing mencatat `stale_failure_rejected`).
+4. Tidak menaikkan `busy_timeout`, tidak memperpanjang lease, tidak menghapus assertion.
+
+**Revisi selama investigasi (dicatat apa adanya):** versi pertama membatasi retry dengan 5 percobaan. Test kontensi dipaksa gagal 1 dari 6 run: satu worker kalah 5x berturut-turut dalam ~215 ms dari lease 600 ms, lalu (sesuai desain) error + pemulihan lewat lease. Batas jumlah membuat jendela retry bergantung pada `busy_timeout`; diganti batas waktu lease. Assertion test baru itu juga diganti: dari "0 reclaim" (salah untuk konfigurasi ekstrem) menjadi invariant observability yang lebih ketat: setiap job yang di-reclaim harus punya error yang menjelaskannya, dan satu-satunya error yang boleh adalah `job_state_write_failed` karena BUSY (atau `lease_at_risk`). Test kontensi capstone (konfigurasi realistis) tetap mensyaratkan 0 error.
+
+**Revisi kedua:** pengulangan 20x suite penuh menemukan test baru `BUSY terus-menerus` gagal 3/20: `retryMs` 1500-1501 ms, test mensyaratkan < lease 1500 ms. Penyebab: prediksi memakai `busy_timeout` nominal, padahal waktu tunggu BUSY sebenarnya sedikit lebih lama. Diukur (`npm run busy-wait-check`, Linux): molor 0.1-3.4 ms (1.00-1.20x) di Node 22 dan 24. Di Windows molornya diduga jauh lebih besar karena busy handler SQLite menghitung sleep nominal dan sleep Windows dibulatkan ke granularitas timer (±15.6 ms); **hipotesis, perlu diukur di Windows dengan `npm run busy-wait-check`**. Perbaikan di kode, bukan di test: prediksi memakai waktu tunggu yang teramati + 25 ms. Hasil: test yang sama 0 gagal dari 110 run (40 normal + 15 dengan CPU penuh, di Node 22 dan 24). Batas test tidak diubah.
+
+Implikasi untuk P1-1: aturan `BUSY_TIMEOUT_MS + HEARTBEAT_MS < LEASE_MS` mengasumsikan `busy_timeout` adalah batas waktu nyata. Kalau di Windows waktu tunggu nyata ±1.5x nominal, margin konfigurasi default (1000 + 1000 < 5000) masih cukup, tapi perlu dikonfirmasi dengan pengukuran.
+
+### Test
+
+`test/contention.test.js`, 10 test: 6 fault injection pada fase tulis status, 2 heartbeat, 1 kontensi dipaksa dengan proses sungguhan, 1 POST /jobs saat terkunci. Kesepuluhnya **gagal di kode lama** dan lulus di kode baru (Node 22 dan 24). 85 test sebelumnya tidak diubah.
+
+Pengulangan suite penuh (95 test) pada kode final dengan `npm run test:repeat`, log lengkap: **20/20 di Node 22.22.0 dan 20/20 di Node 24.22.1**, 0 hang. Test kontensi capstone 20x per versi: 0 gagal di keduanya.
+
+### Risiko yang tersisa
+
+- **Windows belum diverifikasi.** Di Linux, race asli test kontensi hampir tidak pernah terjadi, jadi perbaikan dibuktikan lewat fault injection dan kontensi dipaksa, bukan lewat reproduksi kegagalan Windows itu sendiri. Dengan konfigurasi test (`BUSY_TIMEOUT_MS` 200, lease 600), jendela retry (satu lease dikurangi waktu tunggu lock) hanya cukup untuk sekitar 2-3 percobaan; kalau kontensi di Windows lebih lama dari itu, test kontensi capstone tetap akan gagal, dengan error yang jelas (`reason`, `tries`, `retryMs`), dan itu temuan yang perlu dilaporkan, bukan disembunyikan.
+- Lock yang dipegang lebih lama dari satu lease tetap berakhir di pemulihan lewat lease (attempt terpakai, `WORKER_LOST`). Disengaja: itu gangguan database sungguhan.
+- Selama menunggu lock, event loop worker tetap terblokir hingga `BUSY_TIMEOUT_MS` per percobaan (P1-1, `node:sqlite` sinkron).

@@ -22,7 +22,9 @@ npm run doctor                # semua OK, termasuk "Port dashboard 127.0.0.1:310
 | | Linux / `nanad` | Windows (PowerShell) |
 |---|---|---|
 | Perintah | `npm test 2>&1 \| tee test-$(hostname).log` | `npm test 2>&1 \| Tee-Object -FilePath test-windows.log` |
-| Hasil diharapkan | `# tests 85`, `# pass 85`, `# fail 0` | `# tests 85`, `# pass 84`, `# skipped 1` (SIGSTOP tidak ada di Windows), `# fail 0` |
+| Hasil diharapkan | `# tests 95`, `# pass 95`, `# fail 0` | `# tests 95`, `# pass 94`, `# skipped 1` (SIGSTOP tidak ada di Windows), `# fail 0` |
+
+Node 24 mencetak format `spec` (`ℹ tests 95`, `ℹ pass 94`), bukan TAP. Itu bukan kegagalan. `npm run test:repeat` selalu memakai TAP.
 
 Lalu pengulangan dengan bukti (wajib, terkait AUDIT U-1):
 ```bash
@@ -34,6 +36,25 @@ Yang paling mungkin berbeda di Windows (belum pernah dijalankan di sana):
 - Test kegagalan filesystem: rename ke direktori menghasilkan `EPERM` di Windows (Linux: `EISDIR`). Keduanya non-retryable, jadi test seharusnya tetap lulus.
 - Penghapusan temp dir: proses dashboard dihentikan sebelum direktori dihapus (lihat `track()` di `test/helpers.js`). Kalau muncul `EBUSY`/`EPERM` saat cleanup, catat nama test-nya.
 - Timing: test memakai lease 600 ms. Antivirus/Defender yang memindai `node.exe` bisa memperlambat start proses.
+
+## 1b. Kontensi SQLite (AUDIT C-1, wajib di Windows)
+
+Pertama, ukur seberapa lama `SQLITE_BUSY` sebenarnya menunggu di mesin ini (menguji hipotesis granularitas timer Windows):
+```bash
+npm run busy-wait-check
+```
+Simpan outputnya (`busy-wait.txt`). Kolom `max / busy_timeout` di Linux 1.00-1.20x. Nilai jauh di atas itu di Windows membenarkan hipotesis di AUDIT C-1; tetap lampirkan berapa pun hasilnya.
+
+Lalu ulangi khusus file yang relevan, lebih sering daripada suite penuh:
+```bash
+npm run test:repeat -- --runs 30 --out test-runs/<mesin>-contention test/reliability.test.js test/contention.test.js
+```
+| Hasil | Arti |
+|---|---|
+| 30/30 lulus | Perbaikan bekerja di mesin ini. Catat juga jumlah `state_write_busy`/`claim_busy` dari baris diagnostik `claim_busy=... state_write_busy=...` di log |
+| `kontensi: 4 worker ...` gagal dengan `job_state_write_failed reason=retry_window_exhausted` atau `lease_too_short` | Lock di mesin ini lebih lama dari satu lease test (600 ms). Perbaikan bekerja (tidak lagi `INTERNAL`, tidak ada attempt terpakai) tapi kontensinya lebih berat dari asumsi. **Lampirkan log run itu**; jangan diulang sampai hijau |
+| Gagal dengan `errorClass: INTERNAL` + `database is locked` | Perbaikan tidak bekerja di mesin ini. Lampirkan log |
+| Error lain | Lampirkan log apa adanya |
 
 ## 2. Lab dan dashboard (browser sungguhan)
 
@@ -101,6 +122,7 @@ docs/evidence/<mesin>-dashboard/
   doctor.txt                            # npm run doctor
   check.txt                             # npm run check setelah §2
   test-runs/                            # folder npm run test:repeat (log per run + summary.json)
+  busy-wait.txt                         # output npm run busy-wait-check (§1b)
   host-check.txt                        # output §3a
   csrf-check.txt                        # output terminal §3b + browser dan versinya
   checklist.md                          # tabel §2 dengan hasil per baris, plus OS, versi Node, browser

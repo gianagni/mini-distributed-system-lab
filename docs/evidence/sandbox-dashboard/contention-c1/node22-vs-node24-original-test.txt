@@ -1,0 +1,5 @@
+# Test kontensi capstone (reliability.test.js), 20x per versi Node, kode final, --test-reporter=tap
+v22.22.0: fail=0/20 claim_busy per run: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+v24.22.1: fail=0/20 claim_busy per run: 0 0 1 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1
+# Sebelum perbaikan (8c78683), diukur di awal investigasi:
+v22.22.0: fail=0/20 | v24.22.1: fail=0/20 (0-1 claim_busy per run). Race asli hampir tidak terjadi di Linux.

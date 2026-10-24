@@ -1,0 +1,7 @@
+# Kontensi dipaksa: 4 worker, POLL_MS=1, BUSY_TIMEOUT_MS=1 (worker), 150 job. Node v22.22.0
+old 8c78683 {"succeeded":149,"failed":1,"failedByErrorClass":{"WORKER_LOST":1},"retries":21,"workerLost":22,"dup":0,"violations":0,"claim_busy":124,"state_write_busy":0,"job_state_write_failed":22,"internalLocked":43,"heartbeat_err":0,"errors":22}
+new final   {"succeeded":150,"failed":0,"failedByErrorClass":{},"retries":0,"workerLost":0,"dup":0,"violations":0,"claim_busy":78,"state_write_busy":35,"job_state_write_failed":0,"internalLocked":0,"heartbeat_err":0,"errors":0}
+old 8c78683 {"succeeded":150,"failed":0,"failedByErrorClass":{},"retries":21,"workerLost":14,"dup":0,"violations":0,"claim_busy":129,"state_write_busy":0,"job_state_write_failed":14,"internalLocked":35,"heartbeat_err":0,"errors":14}
+new final   {"succeeded":150,"failed":0,"failedByErrorClass":{},"retries":0,"workerLost":0,"dup":0,"violations":0,"claim_busy":94,"state_write_busy":49,"job_state_write_failed":0,"internalLocked":0,"heartbeat_err":0,"errors":0}
+old 8c78683 {"succeeded":150,"failed":0,"failedByErrorClass":{},"retries":14,"workerLost":11,"dup":0,"violations":0,"claim_busy":111,"state_write_busy":0,"job_state_write_failed":11,"internalLocked":25,"heartbeat_err":0,"errors":11}
+new final   {"succeeded":150,"failed":0,"failedByErrorClass":{},"retries":0,"workerLost":0,"dup":0,"violations":0,"claim_busy":104,"state_write_busy":37,"job_state_write_failed":0,"internalLocked":0,"heartbeat_err":0,"errors":0}
