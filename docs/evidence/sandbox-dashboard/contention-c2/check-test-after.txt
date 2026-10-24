@@ -1,0 +1,37 @@
+# Test 'npm run check aman saat worker aktif' SETELAH perbaikan C-2 (submitJobs + waitForSucceeded 60 s + consistency di onPoll)
+# 30 run, hanya test ini (--test-name-pattern), Node v24.22.1, emulasi tick Windows + flush 5 ms. Kode src C-2.
+# Dijalankan sebelum assertion jobs.total === 150 ditambahkan ke test ini (assertion yang sama ada di repeat suite penuh).
+
+run 01 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 02 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 03 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 04 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 05 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 06 exit 0 ok 1 - submit: {"attempted":150,"requests":151,"accepted":150,"replayed":0,"busy503":1,"gaveUp":0,"other":{},"uniqueIds":150}
+run 07 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 08 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 09 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 10 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 11 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 12 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 13 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 14 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 15 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 16 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 17 exit 0 ok 1 - submit: {"attempted":150,"requests":151,"accepted":150,"replayed":0,"busy503":1,"gaveUp":0,"other":{},"uniqueIds":150}
+run 18 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 19 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 20 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 21 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 22 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 23 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 24 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 25 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 26 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 27 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 28 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 29 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+run 30 exit 0 ok 1 - submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+
+# Ringkasan: 30/30 lulus. Run 6 dan 17 mendapat 503 DB_BUSY untuk 1 POST; diulang dengan Idempotency-Key yang sama,
+# 150 job unik diterima (requests 151), 0 gagal kirim. Itu kasus yang membuat bentuk lama macet (check-test-replay.txt run 9).

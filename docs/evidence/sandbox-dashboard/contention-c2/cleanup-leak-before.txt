@@ -1,0 +1,26 @@
+# Pemeriksa file terbuka saat cleanup, urutan cleanup LAMA (test/contention.test.js dan setup() dari 4d85258)
+# Sumber: kode src C-2 + test/contention.test.js 4d85258; helpers.js 4d85258 ditambah removeTempDir() (cek /proc/self/fd sebelum rm).
+# Linux tidak menolak unlink file terbuka, jadi tanpa pemeriksa ini ketiga test lulus di Linux dan gagal EBUSY di Windows.
+# Node v22.22.0, Linux x86_64
+
+    ok 1 - pola log Windows (BUSY saat commit, dua kali): retry, SUCCEEDED, tanpa INTERNAL dan tanpa error
+    ok 2 - MAX_ATTEMPTS=1: BUSY saat commit tidak boleh membuat job yang pekerjaannya sukses berakhir FAILED
+    ok 3 - kegagalan tugas asli tetap tercatat apa adanya walau tulisan fail kena BUSY
+    ok 4 - BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease
+    ok 5 - error database non-BUSY: tidak di-retry, langsung error dengan kode aslinya
+    ok 6 - sisa lease tidak cukup untuk menunggu lock lagi: tidak di-retry (lease_too_short)
+ok 1 - C-1: SQLITE_BUSY saat menulis status (fault injection, SQLite sungguhan)
+    not ok 1 - lease masih aman: warning heartbeat_busy, bukan error; job tetap sukses
+      error: 'Cleanup: masih ada file terbuka di <tmp>/mini-job-XXXX: /jobs.db, /jobs.db-shm, /jobs.db-wal. Tutup koneksi sebelum menghapus.'
+    not ok 2 - lease hampir habis karena heartbeat terus terkunci: error lease_at_risk (tidak disembunyikan)
+      error: 'Cleanup: masih ada file terbuka di <tmp>/mini-job-XXXX: /jobs.db, /jobs.db-shm, /jobs.db-wal. Tutup koneksi sebelum menghapus.'
+not ok 2 - C-1: heartbeat kena BUSY
+    ok 1 - kontensi dipaksa (4 worker, BUSY_TIMEOUT_MS=1): tidak ada BUSY yang jadi kegagalan tugas, tanpa error
+    not ok 2 - POST /jobs saat database terkunci: 503 DB_BUSY + Retry-After, tidak ada job, aman diulang
+      error: 'Cleanup: masih ada file terbuka di <tmp>/mini-job-XXXX: /jobs.db, /jobs.db-wal, /jobs.db-shm. Tutup koneksi sebelum menghapus.'
+not ok 3 - C-1: proses sungguhan
+# tests 10
+# pass 7
+# fail 3
+
+# Tepat 3 test yang gagal EBUSY di Windows (contention.test.js:222, :229, :284). Setelah perbaikan C-2: 0 file terbuka saat cleanup (lihat repeat-*-summary.json).

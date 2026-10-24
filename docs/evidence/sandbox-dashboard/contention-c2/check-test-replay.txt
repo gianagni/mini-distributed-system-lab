@@ -1,0 +1,42 @@
+# Replay test 'npm run check aman saat worker aktif' (reliability.test.js) dengan bentuk LAMA
+# harness/check-probe.test.js: POST 150 job tanpa memeriksa status (persis test lama), lalu loop consistency() + GET /metrics
+# sampai SUCCEEDED === 150, tetapi dibatasi 60 s (test lama: tanpa batas) supaya hasil tiap run terekam.
+# Node v24.22.1 (SQLite 3.53.4), Linux x86_64, emulasi tick Windows + flush 5 ms (WINTICK_FSYNC_US=5000). Kode src C-2.
+# Latar: suite penuh di emulasi yang sama, 1 dari 10 run gagal 'test timed out after 120000ms' pada test ini tanpa keterangan.
+
+run 01 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":706,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 02 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":691,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 03 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":547,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 04 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":626,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 05 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":590,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 06 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":440,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 07 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":508,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 08 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":407,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 09 {"postStatus":{"202":149,"503":1},"accepted":149,"PENDING":0,"RUNNING":0,"SUCCEEDED":149,"FAILED":0,"total":149,"settled":false,"apiDbBusy":1,"reachable150":false,"checks":11951,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 10 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":552,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 11 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":314,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 12 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":509,"violations":0,"failedByErrorClass":{},"workerLost":1,"errors":["lease_at_risk"]}
+run 13 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":511,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 14 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":615,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 15 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":485,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 16 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":396,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 17 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":579,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 18 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":326,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 19 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":575,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 20 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":424,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 21 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":401,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 22 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":664,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 23 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":488,"violations":0,"failedByErrorClass":{},"workerLost":1,"errors":["lease_at_risk"]}
+run 24 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":304,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 25 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":417,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 26 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":476,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 27 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":579,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":["lease_at_risk"]}
+run 28 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":542,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+run 29 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":653,"violations":0,"failedByErrorClass":{},"workerLost":1,"errors":["lease_at_risk"]}
+run 30 {"postStatus":{"202":150},"accepted":150,"PENDING":0,"RUNNING":0,"SUCCEEDED":150,"FAILED":0,"total":150,"settled":true,"apiDbBusy":0,"reachable150":true,"checks":435,"violations":0,"failedByErrorClass":{},"workerLost":0,"errors":[]}
+
+# Ringkasan: 30 run. 29 selesai (SUCCEEDED=150). Run 9 macet: 1 POST dijawab 503 DB_BUSY (Retry-After), jadi hanya 149 job ada;
+# SUCCEEDED berhenti di 149, loop lama berputar 60 s (11951 pemeriksaan) dan akan berputar sampai timeout 120 s tanpa batas ini.
+# 0 violation di semua run. 0 job FAILED. lease_at_risk di 4 run, semua tetap selesai.
+# Kesimpulan: mekanisme timeout terbukti (503 yang tidak ditangani test + loop tanpa batas), sama dengan kegagalan 5.
+# Bahwa run 2 suite penuh gagal karena hal yang sama TIDAK terbukti: log run itu tidak memuat jumlah job.

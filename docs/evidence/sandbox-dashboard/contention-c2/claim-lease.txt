@@ -1,0 +1,13 @@
+# Lease yang tersisa tepat setelah claimNext kembali, saat thread lain memegang write lock 250 ms
+# harness/claim-stale-now.mjs, LEASE_MS 600, busy_timeout 2000. Node v22.22.0, SQLite 3.50.4, Linux x86_64. Sandbox Linux, tanpa emulasi.
+# (claim > 250 ms karena busy handler SQLite tidur dalam langkah nominal; di Windows langkahnya dibulatkan ke tick 15.6 ms)
+
+4d85258 (now dihitung SEBELUM menunggu lock): [num] claim took 232 ms; lease remaining right after claim returned: 368 ms (configured 600 ms)
+4d85258 (now dihitung SEBELUM menunggu lock): [num] claim took 332 ms; lease remaining right after claim returned: 268 ms (configured 600 ms)
+4d85258 (now dihitung SEBELUM menunggu lock): [num] claim took 332 ms; lease remaining right after claim returned: 268 ms (configured 600 ms)
+C-2     (now dihitung SETELAH lock didapat):  [fn] claim took 332 ms; lease remaining right after claim returned: 598 ms (configured 600 ms)
+C-2     (now dihitung SETELAH lock didapat):  [fn] claim took 332 ms; lease remaining right after claim returned: 599 ms (configured 600 ms)
+C-2     (now dihitung SETELAH lock didapat):  [fn] claim took 332 ms; lease remaining right after claim returned: 598 ms (configured 600 ms)
+
+# Sebelum: lease efektif ±268 ms dari 600 ms -> worker bisa kehilangan lease sebelum heartbeat pertama (HEARTBEAT_MS 150 + tunggu lock).
+# Sesudah: ±598 ms. Regression test: contention.test.js 'claim: waktu lease dihitung SETELAH write lock didapat'.

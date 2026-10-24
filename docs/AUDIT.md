@@ -199,3 +199,84 @@ Pengulangan suite penuh (95 test) pada kode final dengan `npm run test:repeat`, 
 - **Windows belum diverifikasi.** Di Linux, race asli test kontensi hampir tidak pernah terjadi, jadi perbaikan dibuktikan lewat fault injection dan kontensi dipaksa, bukan lewat reproduksi kegagalan Windows itu sendiri. Dengan konfigurasi test (`BUSY_TIMEOUT_MS` 200, lease 600), jendela retry (satu lease dikurangi waktu tunggu lock) hanya cukup untuk sekitar 2-3 percobaan; kalau kontensi di Windows lebih lama dari itu, test kontensi capstone tetap akan gagal, dengan error yang jelas (`reason`, `tries`, `retryMs`), dan itu temuan yang perlu dilaporkan, bukan disembunyikan.
 - Lock yang dipegang lebih lama dari satu lease tetap berakhir di pemulihan lewat lease (attempt terpakai, `WORKER_LOST`). Disengaja: itu gangguan database sungguhan.
 - Selama menunggu lock, event loop worker tetap terblokir hingga `BUSY_TIMEOUT_MS` per percobaan (P1-1, `node:sqlite` sinkron).
+
+## C-2: validasi Windows setelah C-1 (5 kegagalan), 2026-10-24
+
+**Hasil Windows (pemilik proyek, commit `4d85258`, Windows x64, Node v24.22.1, SQLite 3.53.4):** `npm test` 89 lulus, 5 gagal, 1 skip. `npm run busy-wait-check`: busy_timeout 1/50/200/1000 ms menunggu nyata median 15.3/109.2/296.9/1168 ms.
+
+### Metode: emulasi waktu tunggu Windows di Linux
+
+Angka Windows cocok dengan model: busy handler SQLite tidur dengan durasi nominal (1, 2, 5, 10, 15, 20, 25, 25, 25, 50, 50, 100 ms) dan Windows membulatkan **setiap** sleep ke atas ke tick 15.625 ms. Untuk 200 ms model memberi 296.75 ms (Windows: 296.9 ms). Shim `LD_PRELOAD` (`docs/evidence/sandbox-dashboard/contention-c2/harness/wintick.c`) membulatkan `usleep`/`nanosleep`/`clock_nanosleep` ke tick itu, dan secara opsional menambah biaya `fsync` (`WINTICK_FSYNC_US`) untuk meniru `FlushFileBuffers` yang lambat. Validasi emulasi (Linux, Node 22 dan 24): 15.9/110.6/299.0/1175.8 ms, cocok dengan Windows.
+
+Batas emulasi: tidak meniru granularitas timer Node/libuv di Windows, semantik penguncian file Windows (`LockFileEx`), maupun biaya flush disk mesin Windows yang sebenarnya (belum diukur; `busy-wait-check` sekarang mengukurnya).
+
+Temuan penting: emulasi tick saja (tanpa biaya flush) **tidak** memunculkan kegagalan 3 dan 5. Keduanya baru muncul ketika setiap commit memegang lock beberapa milidetik (flush lambat), yang memperpanjang kontensi.
+
+### Akar masalah per kegagalan
+
+| # | Test | Akar masalah | Bukti | Perbaikan |
+|---|---|---|---|---|
+| 1, 2 | `contention.test.js` heartbeat (aman / lease_at_risk): EBUSY unlink `jobs.db-shm` | **Urutan cleanup.** `t.after` dijalankan sesuai urutan pendaftaran. Harness mendaftarkan "hapus temp dir" lebih dulu, `locker.close()` milik skenario sesudahnya, jadi direktori dihapus saat koneksi SQLite masih terbuka. Linux mengizinkan, Windows menolak (EBUSY) | Di Linux, pemeriksaan `/proc/self/fd` tepat sebelum `rm` menemukan `jobs.db`, `jobs.db-shm`, `jobs.db-wal` masih terbuka di tepat 3 test yang gagal di Windows | Satu hook cleanup berurutan: hentikan timer, tutup semua koneksi (`adopt`), baru hapus. Timer pelepas lock dilacak dan dibersihkan |
+| 4 | `contention.test.js` API DB_BUSY: EBUSY unlink `jobs.db-wal` | Sama: `locker.close()` didaftarkan sesudah cleanup milik `setup()` | Sama | `setup().defer(fn)`: penutup dijalankan setelah proses berhenti dan sebelum direktori dihapus |
+| 3 | Kontensi dipaksa: expected 202, actual 503 | **Kontrak test salah.** Sejak C-1, `POST /jobs` sengaja menjawab 503 `DB_BUSY` + `Retry-After` saat lock tidak didapat; test masih mewajibkan 202 untuk setiap POST | Di emulasi, 1-2 dari 150 POST mendapat 503 | Penerimaan akhir lewat `submitJobs`: setiap job punya Idempotency-Key, 503 diulang dengan key yang sama (maksimal 10x, menghormati `Retry-After`), lalu dibuktikan tepat 150 job unik dan `jobs.total = 150`. Penolakan 503 diuji terpisah |
+| 5 | Test kontensi capstone 150 job: `waitUntil` timeout 20 s | (a) **Test tidak memeriksa status POST.** Setiap 503 berarti job tidak pernah dibuat, jadi `SUCCEEDED === 150` mustahil dan test hanya timeout. (b) Dua cacat kode yang memperparah kontensi di Windows (di bawah) | Replay persis test itu di emulasi (`original-test-replay.txt`, kode `4d85258`): di 5 dari 12 run 1-2 POST dijawab 503, jadi hanya 148-149 job ada dan SUCCEEDED berhenti di 148-149 (target 150 tidak mungkin); 0 duplikat; plus 2-8 error worker `lease_too_short` per run | (a) Loop POST memakai `submitJobs` dan memeriksa hasilnya; tunggu SUCCEEDED memakai `waitForSucceeded` yang melaporkan semua angka saat timeout. (b) Lihat cacat kode |
+
+### Dua cacat kode yang ditemukan lewat emulasi
+
+1. **Retry C-1 tidak pernah muat di Windows.** Dengan konfigurasi test (lease 600 ms, busy_timeout 200 ms), satu tunggu BUSY di Windows ±300 ms. Kode C-1 hanya memulai retry kalau satu tunggu PENUH lagi muat di sisa lease, jadi setiap kegagalan pertama langsung menjadi `job_state_write_failed reason=lease_too_short` dengan `state_write_busy: 0`. **Perbaikan:** busy_timeout per retry disesuaikan tenggat: nominal = sisa anggaran (min(sisa lease, sisa jendela retry) - backoff) dikurangi overshoot nyata yang teramati, tidak pernah lebih dari `BUSY_TIMEOUT_MS`, minimal 1 ms; dikembalikan ke `BUSY_TIMEOUT_MS` setelah tulisan selesai. Log `state_write_busy` mencatat `nextBusyTimeoutMs`.
+2. **Lease dari claim termakan waktu tunggu lock.** `processNext` mengirim `now: Date.now()` yang dievaluasi **sebelum** `BEGIN IMMEDIATE` menunggu lock. Terukur: setelah menunggu lock 334 ms, lease 600 ms tinggal 266 ms. Di Linux tunggu lock ±1 ms jadi tidak terlihat. **Perbaikan:** `claimNext` menerima `now` berupa fungsi yang dievaluasi di dalam transaksi setelah lock didapat; worker mengirim `Date.now`. Pemanggil dengan angka (unit test) tidak berubah. Setelah perbaikan: lease 598 ms setelah tunggu 333 ms.
+
+Batas yang diketahui, tidak diubah: `extendLease` (heartbeat) adalah UPDATE autocommit dengan `now` yang juga diambil sebelum menunggu lock, jadi perpanjangan lease memendek sebesar waktu tunggu heartbeat itu sendiri (maksimal ±busy_timeout nyata). Mengubahnya ke transaksi mengubah pola lock heartbeat; dicatat untuk keputusan berikutnya.
+
+### Before/after di emulasi (Node 24, tick Windows, 150 job)
+
+Replay test kontensi capstone dalam bentuk lamanya (POST tanpa retry), 6 run per sel (`original-test-replay.txt`):
+
+| Biaya flush | Kode `4d85258` | Kode C-2 |
+|---|---|---|
+| +5 ms | 6/6 run ada error worker: 2-8 `lease_too_short` per run, **0 retry tulis**; job dipulihkan lewat lease (workerLost 2-8). 2/6 run ada POST 503 → 148-149 job, test asli timeout | 1/6 run ada error: 1 `retry_window_exhausted` setelah retry; retry tulis 1-6 per run; 0 `lease_too_short`. 2/6 run ada POST 503 (kontrak API; test baru mengulangnya) |
+| +10 ms | 6/6 run: 3-7 `lease_too_short`, 0 retry tulis. 3/6 run ada POST 503 | 1/6 run: 2 `lease_at_risk`; retry tulis 2-5 per run; 0 `job_state_write_failed`. 1/6 run ada POST 503 |
+
+Di semua 24 run: semua job yang diterima akhirnya SUCCEEDED, 0 sukses ganda, 0 FAILED.
+
+Suite penuh pada tree final (`npm run test:repeat`, 103 test, `repeat-*-summary.json`):
+
+| Lingkungan | Hasil | Catatan |
+|---|---|---|
+| Node 22.22.0, Linux | 20/20 lulus | 0 POST 503 di test kontensi |
+| Node 24.22.1, Linux | 20/20 lulus | 0 POST 503 |
+| Node 24 + tick Windows + flush 2 ms | 10/10 lulus | 0 POST 503 |
+| Node 24 + tick Windows + flush 5 ms | 9/10 lulus | Run 5: test kontensi capstone gagal pada assertion "0 error worker" karena 1 `lease_at_risk` (`leaseLeftMs: -5`); 150/150 tetap SUCCEEDED, 0 ganda, konsisten (`repeat-n24-win5ms-run-005.log`). 6 dari 20 pengiriman 150 job mendapat 1-2 POST 503, semuanya diulang dengan key yang sama, 0 gagal kirim, tepat 150 job |
+
+Sebelum perbaikan test "npm run check aman" dan `waitForSucceeded` (tree C-2 sebelumnya), emulasi +5 ms memberi 7/10: 2 run `lease_at_risk` dan 1 run timeout 120 s di test itu.
+
+### Kesalahan test baru yang ditemukan lewat emulasi (dicatat apa adanya)
+
+Test regresi pertama untuk retry sadar-tenggat meniru Windows dengan **menambah** 100 ms setelah BUSY sungguhan. Lulus 40/40 di Linux biasa, tapi **gagal 10/10 di emulasi waktu Windows**: di sana tunggu BUSY aslinya sudah ±300 ms, jadi tambahan 100 ms membuat total ±400 ms dan tidak ada retry yang muat. Test itu juga akan gagal di Windows sungguhan. Diperbaiki di test (bukan di kode): tunggu **digenapkan** sampai total 300 ms (nilai Windows terukur), tidak ditambah. Setelah itu lulus 5/5 di Linux biasa dan di emulasi, Node 22 dan 24.
+
+### Timeout test "npm run check aman saat worker aktif" (ditemukan di emulasi, belum terlihat di Windows)
+
+Di repeat suite penuh dengan emulasi flush +5 ms, 1 dari 10 run gagal `testTimeoutFailure` 120 s di `reliability.test.js:262` tanpa keterangan apa pun. Test ini punya pola yang sama dengan kegagalan 5: 150 POST tanpa memeriksa status, lalu `for (;;)` sampai `SUCCEEDED === 150` **tanpa batas**.
+
+Replay bentuk lama test itu (`harness/check-probe.test.js`, sama persis tapi dibatasi 60 s dan mencatat angka) di emulasi yang sama, 30 run (`check-test-replay.txt`): 29 selesai; **run 9 macet** karena 1 POST dijawab 503 `DB_BUSY`, hanya 149 job ada, SUCCEEDED berhenti di 149 dan loop berputar 11.951 kali sampai batas. 0 violation, 0 FAILED di semua run. Jadi mekanismenya terbukti. Bahwa run suite yang gagal itu karena hal yang sama **tidak** terbukti: log-nya tidak memuat jumlah job (itulah masalahnya).
+
+Perbaikan di test, tanpa melemahkan assertion: `submitJobs` (Idempotency-Key, ulangi 503, wajib 0 gagal kirim dan 150 id unik), lalu `waitForSucceeded` dengan batas 60 s dan pemeriksaan konsistensi di setiap putaran (`onPoll`). Assertion 0 violation di setiap pemeriksaan, `checks > 3`, dan konsistensi akhir tidak berubah. Setelah perbaikan, 30 run test itu di emulasi +5 ms: 30/30 lulus; di 2 run satu POST mendapat 503 dan diulang dengan key yang sama, tetap tepat 150 job (`check-test-after.txt`).
+
+Ikut diperbaiki di helper, karena keduanya juga bisa membuat test diam sampai 120 s:
+- `waitForSucceeded` menunggu sampai semua n job **selesai** (SUCCEEDED atau FAILED), lalu mewajibkan semuanya SUCCEEDED. Job yang berakhir FAILED sekarang langsung menggagalkan test dengan jumlah per status dan `failedByErrorClass`, bukan menunggu timeout. Syarat lulus sama dengan sebelumnya (tepat n SUCCEEDED dalam batas waktu). Regression test: `contention.test.js` "C-2: tunggu job yang dibatasi"; dengan helper lama, test "job berakhir FAILED" menunggu 60 s penuh lalu gagal, dan "assertion di onPoll" gagal.
+- `get`/`post` di `setup()` dibatasi 30 s per request (`AbortSignal`), dengan pesan yang menyebut path-nya. Sebelumnya request yang menggantung juga diam sampai timeout test.
+
+### Perubahan pada test lama (C-2)
+
+`reliability.test.js` "kontensi: 4 worker polling 1 ms, 150 job": **hanya** loop POST (sekarang `submitJobs`: Idempotency-Key, retry 503 terbatas, assertion 0 gagal kirim, 150 id unik, `jobs.total = 150`) dan pemanggilan tunggu (`waitForSucceeded`: kondisi `SUCCEEDED === 150` dan timeout 20 s **sama**, hanya pesan gagalnya berisi angka). Assertion 0 sukses ganda, konsistensi, dan **0 error worker** tidak diubah. Alasan: test lama mengabaikan status respons, padahal 503 adalah kontrak sah sejak C-1.
+
+`reliability.test.js` "npm run check aman saat worker aktif": loop POST menjadi `submitJobs`, loop `for (;;)` menjadi `waitForSucceeded` (60 s, `onPoll` menjalankan pemeriksaan konsistensi yang sama). Semua assertion lama tetap. Lihat bagian di atas.
+
+`waitForSucceeded` sekarang gagal lebih awal kalau ada job FAILED (sebelumnya menunggu sampai timeout). Hasil lulus/gagal sama; yang berubah hanya kapan dan dengan pesan apa test gagal.
+
+### Risiko yang tersisa dan keputusan yang dibutuhkan
+
+- **Kejenuhan satu penulis pada flush lambat.** Di emulasi dengan flush ≥5 ms, sebagian run masih mencatat `lease_at_risk`: satu worker tidak mendapat lock sepanjang satu lease penuh (600 ms di test), baik untuk commit maupun heartbeat. Tidak ada salah klasifikasi, tidak ada job hilang/ganda, error-nya keras. Tapi assertion "0 error worker" di test capstone akan gagal kalau commit di mesin Windows itu ≥±5 ms. Ini batas yang sudah dinamai ADR-001 ("database is locked berulang pada beban normal → ukur ulang"). Opsi (belum dipilih, butuh keputusan pemilik): (a) perlakukan sebagai batas lingkungan dan dokumentasikan syarat storage untuk test itu; (b) `PRAGMA synchronous = NORMAL` di WAL (flush hanya saat checkpoint; trade-off durabilitas, keputusan arsitektur); (c) kurangi tekanan lock (mis. tidak heartbeat selama retry commit, cek baca sebelum claim saat antrean kosong); (d) lease test lebih panjang, sekarang dengan bukti bahwa tunggu nyata Windows ±1.5x nominal.
+- **Sisa yang terlihat di emulasi +5 ms:** 1 dari 10 run suite penuh (`lease_at_risk`), dan di replay 1 `job_state_write_failed reason=retry_window_exhausted` dari 12 run kode baru (setelah retry, bukan `lease_too_short` tanpa retry). Keduanya error keras, job dipulihkan lewat lease, 0 hilang/ganda/FAILED. Di +2 ms: 0 dari 10.
+- **`extendLease` masih memakai `now` sebelum menunggu lock** (lihat di atas). Belum diubah.
+- **Windows belum diverifikasi ulang.** Biaya flush mesin Windows belum diketahui; `npm run busy-wait-check` sekarang mencetak latency commit dan `setTimeout(1)` nyata.

@@ -11,7 +11,7 @@ Capstone Bab 10 modul *Inside Modern AI Systems*: sistem kecil untuk job asynchr
 
 ```bash
 npm run doctor       # cek Node, node:sqlite, direktori data, port
-npm test             # 95 test (58 capstone + 13 dashboard + 14 security + 10 contention), sekitar 30 detik
+npm test             # 103 test (58 capstone + 13 dashboard + 14 security + 18 contention), sekitar 35 detik
 npm run lab          # API + 2 worker + dashboard di http://127.0.0.1:3100 (Ctrl+C untuk berhenti)
 npm run experiment   # ablation + drain capacity, sekitar 5 menit (EXP_REPS=1 untuk sekitar 2 menit)
 ```
@@ -125,7 +125,7 @@ src/readmodel.js    query read-only            src/timeline.js     timeline dari
 src/hostguard.js    allowlist Host + Origin (API dan dashboard)
 dashboard/          UI (HTML/CSS/ES modules, tanpa build): app.js, lib.js, views/*.js
 scripts/            lab, csrf-check, host-check, busy-wait-check, test-repeat, experiment, compare-results, check-consistency, doctor, clean, lib/harness
-test/               unit, integration (34 test asli), storage, reliability (24 test baru), dashboard (13), security (14), contention (10), helpers
+test/               unit, integration (34 test asli), storage, reliability (24 test baru), dashboard (13), security (14), contention (15), helpers
 ```
 
 ## Known limitations
@@ -141,6 +141,6 @@ Ringkasan, detail di [AUDIT.md](docs/AUDIT.md) dan [ADR-001](docs/ADR-001-archit
 - Tanpa autentikasi, tanpa retensi data, metrik dihitung O(jumlah job). Dashboard yang polling menjalankan query O(n) itu setiap interval.
 - CSRF (AUDIT S-1, `npm run csrf-check`) dan DNS rebinding (AUDIT S-2, `npm run host-check`) sudah ditutup untuk serangan lewat browser. Proses lokal non-browser tetap bisa memakai API (tanpa autentikasi, disengaja).
 - Satu kegagalan test yang belum terjelaskan (1 dari 15 run, AUDIT U-1). `npm run test:repeat` menyimpan log lengkap untuk menyelidikinya.
-- Kontensi SQLite (AUDIT C-1): tulisan status yang kena `SQLITE_BUSY` diulang terbatas dalam satu periode lease; lock yang lebih lama dari itu tetap berakhir di pemulihan lewat lease dengan error `job_state_write_failed`. Perbaikan ini belum divalidasi di Windows, tempat kegagalannya ditemukan.
+- Kontensi SQLite (AUDIT C-1): tulisan status yang kena `SQLITE_BUSY` diulang terbatas dalam satu periode lease; lock yang lebih lama dari itu tetap berakhir di pemulihan lewat lease dengan error `job_state_write_failed`. Validasi Windows pertama menemukan 5 kegagalan lanjutan (AUDIT C-2: urutan cleanup test, kontrak 503 di test, retry yang tidak muat dengan waktu tunggu Windows, lease claim yang termakan tunggu lock); sudah diperbaiki dan diuji dengan emulasi waktu Windows, belum divalidasi ulang di Windows. Pada storage dengan flush lambat (±5 ms per commit ke atas), kontensi berat masih bisa memunculkan `lease_at_risk`; lihat keputusan terbuka di AUDIT C-2.
 - Dashboard: worker idle tidak terlihat (tidak ada registry worker), dan waktu kematian worker hanya diketahui sebagai waktu deteksi (`lease_expired`).
 - Eksperimen dan test dijalankan di InstaBox `nanad` oleh pemilik proyek (hasil di `docs/evidence/nanad/`, diverifikasi di `COMPARISON.md`). Log test `nanad` tidak dilampirkan.

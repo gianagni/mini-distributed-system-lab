@@ -28,9 +28,9 @@ Exit code 0 berarti siap. Kalau ada `GAGAL`, lihat bagian Troubleshooting.
 ## 2. Menjalankan tests
 
 ```bash
-npm test                      # 95 test (58 capstone + 13 dashboard + 14 security + 10 contention), sekitar 30 detik
+npm test                      # 103 test (58 capstone + 13 dashboard + 14 security + 18 contention), sekitar 35 detik
 ```
-Hasil yang diharapkan ada di baris akhir: `# pass 95` dan `# fail 0`. Di Windows, satu test (`worker zombie (SIGSTOP...)`) di-skip karena SIGSTOP tidak ada; hasilnya `# pass 94`, `# skipped 1`. Node 24 memakai format `spec` secara default, jadi barisnya `ℹ pass 95` / `ℹ fail 0`. Setiap file test dibatasi 120 detik (`--test-timeout`), jadi test yang hang muncul sebagai `testTimeoutFailure`, bukan menggantung. (Run `nanad` yang dilaporkan 58/58 terjadi sebelum test dashboard ditambahkan.) Untuk memeriksa flakiness, pakai runner yang menyimpan bukti (log TAP lengkap per run, exit code, nama test gagal, `summary.json`):
+Hasil yang diharapkan ada di baris akhir: `# pass 103` dan `# fail 0`. Di Windows dua test di-skip: `worker zombie (SIGSTOP...)` (SIGSTOP tidak ada) dan pemeriksa file terbuka saat cleanup (butuh `/proc`; di Windows file terbuka sudah membuat `rm` gagal EBUSY sendiri). Hasilnya `# pass 101`, `# skipped 2`. Node 24 memakai format `spec` secara default, jadi barisnya `ℹ pass 103` / `ℹ fail 0`. Setiap test dibatasi 120 detik (`--test-timeout`, per test, bukan per file), jadi test yang hang muncul sebagai `testTimeoutFailure`, bukan menggantung. (Run `nanad` yang dilaporkan 58/58 terjadi sebelum test dashboard ditambahkan.) Untuk memeriksa flakiness, pakai runner yang menyimpan bukti (log TAP lengkap per run, exit code, nama test gagal, `summary.json`):
 ```bash
 npm run test:repeat -- --runs 20          # log di test-runs/<waktu>/ (di-ignore git)
 ```
@@ -134,7 +134,8 @@ rm -rf logs run
 | Log `worker_loop_error` / `job_state_write_failed` dengan `database is locked` | Proses lain memegang transaksi tulis lama (mis. `sqlite3` CLI) | Tutup proses itu. Job pulih otomatis lewat lease |
 | Log `warn state_write_busy` / `warn heartbeat_busy` sesekali | Kontensi lock saat menulis status atau heartbeat (AUDIT C-1). Diulang otomatis selama lease aman | Normal di bawah beban. Kalau sering: kurangi worker atau naikkan `POLL_MS` |
 | Log `error job_state_write_failed` dengan `reason` | `retry_window_exhausted` / `lease_too_short`: lock tidak didapat selama satu lease penuh. `non_busy_error`: error database lain (disk, I/O), lihat `writeErrorCode` | Job dipulihkan lewat lease (attempt terpakai, `WORKER_LOST`). Cari proses yang memegang lock lama; untuk `non_busy_error` periksa disk (`npm run doctor`) |
-| Log `error lease_at_risk` | Heartbeat berulang kali tidak dapat lock; lease bisa habis sebelum heartbeat berikutnya | Job mungkin diambil alih worker lain (fencing mencegah hasil ganda). Cari sumber kontensi |
+| Log `error lease_at_risk` | Heartbeat berulang kali tidak dapat lock; lease bisa habis sebelum heartbeat berikutnya | Job mungkin diambil alih worker lain (fencing mencegah hasil ganda). Cari sumber kontensi. Kalau sering di Windows: cek `commit tulis` di `npm run busy-wait-check` (flush lambat memperpanjang kontensi, AUDIT C-2) |
+| Test gagal `Cleanup: masih ada file terbuka` (Linux) atau `EBUSY` saat menghapus temp dir (Windows) | Test meninggalkan koneksi SQLite terbuka sebelum direktori dihapus | Bug di test: daftarkan penutup lewat `setup().defer()` / `harness.adopt()` (AUDIT C-2) |
 | API `503 DB_BUSY` | `POST /jobs` tidak dapat lock dalam `BUSY_TIMEOUT_MS`. Tidak ada job yang dibuat | Ulangi setelah `Retry-After`, sebaiknya dengan `Idempotency-Key` yang sama |
 | Log `warn claim_busy` sesekali | Banyak worker berebut lock dengan polling cepat | Normal di bawah beban. Kalau terus-menerus: kurangi worker atau naikkan `POLL_MS` |
 | Job `FAILED` `STORAGE` | `REPORT_DIR` tidak bisa ditulis, path salah, atau disk penuh | `npm run doctor`, `df -h .` |
@@ -151,7 +152,7 @@ rm -rf logs run
 | `npm test` | Dilaporkan 58/58 di `nanad`. Log tidak dilampirkan |
 | `npm run experiment` (3 repetisi) | Ada di `docs/evidence/nanad/`. Markdown = render JSON, konsisten, SHA-256 ZIP cocok (`COMPARISON.md`) |
 | Langkah 3-7 (background, job manual, stop, clean) | Belum dilaporkan dari `nanad` |
-| Dashboard (§10) + S-1 + S-2 + C-1: `npm test` 95/95 (Node 22.22.0 dan 24.22.1), `npm run lab`, `csrf-check`, `host-check`, skenario browser | Hanya di sandbox Linux (Node 22.22.0, Chromium headless). **Belum** dijalankan di `nanad` maupun Windows; langkahnya di `docs/VALIDATION-PLAN.md` |
+| Dashboard (§10) + S-1 + S-2 + C-1 + C-2: `npm test` 103/103 (Node 22.22.0 dan 24.22.1, 20/20 run masing-masing; emulasi waktu tunggu Windows: flush +2 ms 10/10, +5 ms 9/10 karena `lease_at_risk`, AUDIT C-2), `npm run lab`, `csrf-check`, `host-check`, skenario browser | Hanya di sandbox Linux (Node 22.22.0, Chromium headless). **Belum** dijalankan di `nanad` maupun Windows; langkahnya di `docs/VALIDATION-PLAN.md` |
 | Lokasi storage eksperimen | Eksperimen memakai `os.tmpdir()`. Jalankan `df -T /tmp "$(pwd)/data"` untuk tahu apakah `/tmp` adalah tmpfs. Ini menentukan apakah angka throughput mewakili disk persisten |
 
 ## 10. Dashboard (Reliability Lab)

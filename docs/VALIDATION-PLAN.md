@@ -22,9 +22,9 @@ npm run doctor                # semua OK, termasuk "Port dashboard 127.0.0.1:310
 | | Linux / `nanad` | Windows (PowerShell) |
 |---|---|---|
 | Perintah | `npm test 2>&1 \| tee test-$(hostname).log` | `npm test 2>&1 \| Tee-Object -FilePath test-windows.log` |
-| Hasil diharapkan | `# tests 95`, `# pass 95`, `# fail 0` | `# tests 95`, `# pass 94`, `# skipped 1` (SIGSTOP tidak ada di Windows), `# fail 0` |
+| Hasil diharapkan | `# tests 103`, `# pass 103`, `# fail 0` | `# tests 103`, `# pass 101`, `# skipped 2` (SIGSTOP; pemeriksa `/proc` saat cleanup), `# fail 0` |
 
-Node 24 mencetak format `spec` (`ℹ tests 95`, `ℹ pass 94`), bukan TAP. Itu bukan kegagalan. `npm run test:repeat` selalu memakai TAP.
+Node 24 mencetak format `spec` (`ℹ tests 103`, `ℹ pass 101`), bukan TAP. Itu bukan kegagalan. `npm run test:repeat` selalu memakai TAP.
 
 Lalu pengulangan dengan bukti (wajib, terkait AUDIT U-1):
 ```bash
@@ -43,7 +43,9 @@ Pertama, ukur seberapa lama `SQLITE_BUSY` sebenarnya menunggu di mesin ini (meng
 ```bash
 npm run busy-wait-check
 ```
-Simpan outputnya (`busy-wait.txt`). Kolom `max / busy_timeout` di Linux 1.00-1.20x. Nilai jauh di atas itu di Windows membenarkan hipotesis di AUDIT C-1; tetap lampirkan berapa pun hasilnya.
+Simpan outputnya (`busy-wait.txt`). Selain tabel tunggu BUSY (Windows terukur ±1.5x di 200 ms), output sekarang memuat:
+- `commit tulis (lock dipegang)`: biaya flush per commit di mesin ini. Di emulasi, test kontensi stabil sampai ±2 ms; mulai ±5 ms sebagian run mencatat `lease_at_risk` (AUDIT C-2). **Angka ini yang paling dibutuhkan** untuk menilai hasil test kontensi.
+- `setTimeout(1) nyata`: seberapa sering worker `POLL_MS=1` benar-benar polling (tidak bisa diemulasi di Linux).
 
 Lalu ulangi khusus file yang relevan, lebih sering daripada suite penuh:
 ```bash
@@ -52,7 +54,11 @@ npm run test:repeat -- --runs 30 --out test-runs/<mesin>-contention test/reliabi
 | Hasil | Arti |
 |---|---|
 | 30/30 lulus | Perbaikan bekerja di mesin ini. Catat juga jumlah `state_write_busy`/`claim_busy` dari baris diagnostik `claim_busy=... state_write_busy=...` di log |
-| `kontensi: 4 worker ...` gagal dengan `job_state_write_failed reason=retry_window_exhausted` atau `lease_too_short` | Lock di mesin ini lebih lama dari satu lease test (600 ms). Perbaikan bekerja (tidak lagi `INTERNAL`, tidak ada attempt terpakai) tapi kontensinya lebih berat dari asumsi. **Lampirkan log run itu**; jangan diulang sampai hijau |
+| `kontensi: 4 worker ...` gagal dengan `lease_at_risk` saja | Kejenuhan lock: satu worker tidak dapat lock sepanjang satu lease. Bandingkan dengan `commit tulis` di `busy-wait.txt`. Bukan salah klasifikasi; lihat keputusan terbuka di AUDIT C-2. **Lampirkan log run itu** |
+| `job_state_write_failed reason=lease_too_short` dengan `tries: 1` dan tanpa `state_write_busy` | Regresi C-2 (retry tidak menyesuaikan tenggat). Lampirkan log |
+| Gagal `submit=... gaveUp>0` | `POST /jobs` 503 lebih dari 10x berturut-turut untuk satu job. Lampirkan log (berisi angka attempted/accepted/503) |
+| Gagal `ada job yang berakhir FAILED. byStatus=...` atau `waitUntil: timeout ... byStatus=...` | Job tidak selesai sukses. Pesan memuat jumlah per status, `failedByErrorClass`, hasil pengiriman, dan error worker. Lampirkan log |
+| `EBUSY` / `Cleanup: masih ada file terbuka` | Kebocoran koneksi di test. Lampirkan nama test |
 | Gagal dengan `errorClass: INTERNAL` + `database is locked` | Perbaikan tidak bekerja di mesin ini. Lampirkan log |
 | Error lain | Lampirkan log apa adanya |
 

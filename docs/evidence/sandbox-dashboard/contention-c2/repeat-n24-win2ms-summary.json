@@ -1,0 +1,263 @@
+{
+  "node": "v24.22.1",
+  "platform": "linux 6.18.44-fc-v153",
+  "cpus": 4,
+  "runs": 10,
+  "testTimeout": 120000,
+  "runTimeout": 600000,
+  "failedRuns": [],
+  "hungRuns": [],
+  "failuresByTest": {},
+  "results": [
+    {
+      "run": 1,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 43260,
+      "loadavgAtStart": [
+        0.58,
+        0.61,
+        0.6
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 103,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 43202.06083
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-001.log"
+    },
+    {
+      "run": 2,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 43494,
+      "loadavgAtStart": [
+        0.44,
+        0.56,
+        0.58
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 103,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 43442.441557
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-002.log"
+    },
+    {
+      "run": 3,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 43189,
+      "loadavgAtStart": [
+        0.55,
+        0.56,
+        0.58
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 103,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 43147.725179
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-003.log"
+    },
+    {
+      "run": 4,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 43332,
+      "loadavgAtStart": [
+        0.49,
+        0.55,
+        0.58
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 103,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 43246.036053
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-004.log"
+    },
+    {
+      "run": 5,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 43830,
+      "loadavgAtStart": [
+        0.25,
+        0.48,
+        0.55
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 103,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 43777.382973
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-005.log"
+    },
+    {
+      "run": 6,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 42694,
+      "loadavgAtStart": [
+        0.55,
+        0.51,
+        0.55
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 103,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 42636.752387
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-006.log"
+    },
+    {
+      "run": 7,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 43434,
+      "loadavgAtStart": [
+        0.61,
+        0.53,
+        0.56
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 103,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 43392.411269
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-007.log"
+    },
+    {
+      "run": 8,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 43033,
+      "loadavgAtStart": [
+        0.36,
+        0.48,
+        0.54
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 103,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 42985.65789
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-008.log"
+    },
+    {
+      "run": 9,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 42205,
+      "loadavgAtStart": [
+        0.54,
+        0.5,
+        0.55
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 103,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 42156.167259
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-009.log"
+    },
+    {
+      "run": 10,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 42955,
+      "loadavgAtStart": [
+        0.37,
+        0.47,
+        0.53
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 103,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 42889.451175
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-010.log"
+    }
+  ]
+}

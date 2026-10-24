@@ -1,0 +1,856 @@
+TAP version 13
+# Subtest: C-1: SQLITE_BUSY saat menulis status (fault injection, SQLite sungguhan)
+    # Subtest: pola log Windows (BUSY saat commit, dua kali): retry, SUCCEEDED, tanpa INTERNAL dan tanpa error
+    ok 1 - pola log Windows (BUSY saat commit, dua kali): retry, SUCCEEDED, tanpa INTERNAL dan tanpa error
+      ---
+      duration_ms: 339.185273
+      type: 'test'
+      ...
+    # Subtest: MAX_ATTEMPTS=1: BUSY saat commit tidak boleh membuat job yang pekerjaannya sukses berakhir FAILED
+    ok 2 - MAX_ATTEMPTS=1: BUSY saat commit tidak boleh membuat job yang pekerjaannya sukses berakhir FAILED
+      ---
+      duration_ms: 224.780039
+      type: 'test'
+      ...
+    # Subtest: kegagalan tugas asli tetap tercatat apa adanya walau tulisan fail kena BUSY
+    ok 3 - kegagalan tugas asli tetap tercatat apa adanya walau tulisan fail kena BUSY
+      ---
+      duration_ms: 219.37829
+      type: 'test'
+      ...
+    # Subtest: BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease
+    ok 4 - BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease
+      ---
+      duration_ms: 2821.473201
+      type: 'test'
+      ...
+    # Subtest: error database non-BUSY: tidak di-retry, langsung error dengan kode aslinya
+    ok 5 - error database non-BUSY: tidak di-retry, langsung error dengan kode aslinya
+      ---
+      duration_ms: 88.782326
+      type: 'test'
+      ...
+    # Subtest: sisa lease tidak cukup untuk menunggu lock lagi: tidak di-retry (lease_too_short)
+    ok 6 - sisa lease tidak cukup untuk menunggu lock lagi: tidak di-retry (lease_too_short)
+      ---
+      duration_ms: 267.886032
+      type: 'test'
+      ...
+    1..6
+ok 1 - C-1: SQLITE_BUSY saat menulis status (fault injection, SQLite sungguhan)
+  ---
+  duration_ms: 3963.789081
+  type: 'suite'
+  ...
+# Subtest: C-1: heartbeat kena BUSY
+    # Subtest: lease masih aman: warning heartbeat_busy, bukan error; job tetap sukses
+    ok 1 - lease masih aman: warning heartbeat_busy, bukan error; job tetap sukses
+      ---
+      duration_ms: 347.707856
+      type: 'test'
+      ...
+    # Subtest: lease hampir habis karena heartbeat terus terkunci: error lease_at_risk (tidak disembunyikan)
+    ok 2 - lease hampir habis karena heartbeat terus terkunci: error lease_at_risk (tidak disembunyikan)
+      ---
+      duration_ms: 380.772697
+      type: 'test'
+      ...
+    1..2
+ok 2 - C-1: heartbeat kena BUSY
+  ---
+  duration_ms: 729.221688
+  type: 'suite'
+  ...
+# Subtest: C-1: proses sungguhan
+    # Subtest: kontensi dipaksa (4 worker, BUSY_TIMEOUT_MS=1): tidak ada BUSY yang jadi kegagalan tugas, tanpa error
+    ok 1 - kontensi dipaksa (4 worker, BUSY_TIMEOUT_MS=1): tidak ada BUSY yang jadi kegagalan tugas, tanpa error
+      ---
+      duration_ms: 4234.120193
+      type: 'test'
+      ...
+    # claim_busy=314 state_write_busy=59 job_state_write_failed=0 lease_reclaims=0 submit={"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+    # Subtest: POST /jobs saat database terkunci: 503 DB_BUSY + Retry-After, tidak ada job, aman diulang
+    ok 2 - POST /jobs saat database terkunci: 503 DB_BUSY + Retry-After, tidak ada job, aman diulang
+      ---
+      duration_ms: 426.026667
+      type: 'test'
+      ...
+    1..2
+ok 3 - C-1: proses sungguhan
+  ---
+  duration_ms: 4660.888196
+  type: 'suite'
+  ...
+# Subtest: C-2: tenggat dan waktu tunggu lock ala Windows
+    # Subtest: tunggu BUSY molor 1.5x (Windows): retry tetap terjadi dengan busy_timeout yang dipendekkan, lalu dipulihkan
+    ok 1 - tunggu BUSY molor 1.5x (Windows): retry tetap terjadi dengan busy_timeout yang dipendekkan, lalu dipulihkan
+      ---
+      duration_ms: 406.093102
+      type: 'test'
+      ...
+    # Subtest: claim: waktu lease dihitung SETELAH write lock didapat, bukan sebelum menunggu
+    ok 2 - claim: waktu lease dihitung SETELAH write lock didapat, bukan sebelum menunggu
+      ---
+      duration_ms: 418.424603
+      type: 'test'
+      ...
+    1..2
+ok 4 - C-2: tenggat dan waktu tunggu lock ala Windows
+  ---
+  duration_ms: 824.95846
+  type: 'suite'
+  ...
+# Subtest: C-2: kontrak POST /jobs di bawah kontensi
+    # Subtest: 503 DB_BUSY lalu diterima: retry dengan Idempotency-Key yang sama menghasilkan tepat satu job
+    ok 1 - 503 DB_BUSY lalu diterima: retry dengan Idempotency-Key yang sama menghasilkan tepat satu job
+      ---
+      duration_ms: 1545.314504
+      type: 'test'
+      ...
+    # Subtest: batas retry klien: kalau database terkunci terus, berhenti dan melaporkan, tidak mengulang tanpa batas
+    ok 2 - batas retry klien: kalau database terkunci terus, berhenti dan melaporkan, tidak mengulang tanpa batas
+      ---
+      duration_ms: 461.891964
+      type: 'test'
+      ...
+    1..2
+ok 5 - C-2: kontrak POST /jobs di bawah kontensi
+  ---
+  duration_ms: 2007.599071
+  type: 'suite'
+  ...
+# Subtest: C-2: cleanup lintas platform
+    # Subtest: temp dir tidak boleh dihapus selama koneksi SQLite di dalamnya masih terbuka
+    ok 1 - temp dir tidak boleh dihapus selama koneksi SQLite di dalamnya masih terbuka
+      ---
+      duration_ms: 55.147018
+      type: 'test'
+      ...
+    1..1
+ok 6 - C-2: cleanup lintas platform
+  ---
+  duration_ms: 55.493309
+  type: 'suite'
+  ...
+# Subtest: C-2: tunggu job yang dibatasi
+    # Subtest: job berakhir FAILED: gagal langsung dengan jumlah per status, tidak menunggu sampai timeout
+    ok 1 - job berakhir FAILED: gagal langsung dengan jumlah per status, tidak menunggu sampai timeout
+      ---
+      duration_ms: 0.718154
+      type: 'test'
+      ...
+    # Subtest: job tidak pernah selesai: timeout dengan jumlah per status, bukan menggantung
+    ok 2 - job tidak pernah selesai: timeout dengan jumlah per status, bukan menggantung
+      ---
+      duration_ms: 102.002931
+      type: 'test'
+      ...
+    # Subtest: assertion di onPoll tidak tertelan sebagai timeout
+    ok 3 - assertion di onPoll tidak tertelan sebagai timeout
+      ---
+      duration_ms: 1.6463
+      type: 'test'
+      ...
+    1..3
+ok 7 - C-2: tunggu job yang dibatasi
+  ---
+  duration_ms: 104.71817
+  type: 'suite'
+  ...
+# Subtest: timeline dari event store asli
+    # Subtest: retry lalu sukses: jeda dipisah jadi backoff + antre, format pesan backoff terkunci
+    ok 1 - retry lalu sukses: jeda dipisah jadi backoff + antre, format pesan backoff terkunci
+      ---
+      duration_ms: 4.404002
+      type: 'test'
+      ...
+    # Subtest: worker hilang: reclaim, akhir attempt = waktu deteksi, tulisan zombie tercatat di attempt lama
+    ok 2 - worker hilang: reclaim, akhir attempt = waktu deteksi, tulisan zombie tercatat di attempt lama
+      ---
+      duration_ms: 1.216955
+      type: 'test'
+      ...
+    # Subtest: worker hilang pada attempt terakhir: worker_lost + final, tanpa jeda terbuka
+    ok 3 - worker hilang pada attempt terakhir: worker_lost + final, tanpa jeda terbuka
+      ---
+      duration_ms: 1.368171
+      type: 'test'
+      ...
+    # Subtest: permanen: gagal final tanpa retry
+    ok 4 - permanen: gagal final tanpa retry
+      ---
+      duration_ms: 1.102621
+      type: 'test'
+      ...
+    # Subtest: PENDING: jeda terbuka sampai snapshot (belum pernah di-claim, dan setelah retry)
+    ok 5 - PENDING: jeda terbuka sampai snapshot (belum pernah di-claim, dan setelah retry)
+      ---
+      duration_ms: 1.23826
+      type: 'test'
+      ...
+    # Subtest: parseBackoffMs hanya menerima format store.js
+    ok 6 - parseBackoffMs hanya menerima format store.js
+      ---
+      duration_ms: 0.241354
+      type: 'test'
+      ...
+    1..6
+ok 8 - timeline dari event store asli
+  ---
+  duration_ms: 10.933141
+  type: 'suite'
+  ...
+# Subtest: read model dashboard
+    # Subtest: list: terbaru dulu, keyset pagination stabil, filter status/error class/retried
+    ok 1 - list: terbaru dulu, keyset pagination stabil, filter status/error class/retried
+      ---
+      duration_ms: 4.071005
+      type: 'test'
+      ...
+    1..1
+ok 9 - read model dashboard
+  ---
+  duration_ms: 4.264341
+  type: 'suite'
+  ...
+# Subtest: konfigurasi dashboard
+    # Subtest: default loopback; non-loopback wajib ALLOW_REMOTE; fault injection hanya loopback
+    ok 1 - default loopback; non-loopback wajib ALLOW_REMOTE; fault injection hanya loopback
+      ---
+      duration_ms: 1.339115
+      type: 'test'
+      ...
+    # Subtest: setiap preset fault injection di form lolos validasi API
+    ok 2 - setiap preset fault injection di form lolos validasi API
+      ---
+      duration_ms: 0.58251
+      type: 'test'
+      ...
+    1..2
+ok 10 - konfigurasi dashboard
+  ---
+  duration_ms: 2.223317
+  type: 'suite'
+  ...
+# Subtest: proses dashboard (API + worker + dashboard sungguhan)
+    # Subtest: buat job lewat dashboard, status berubah, timeline memakai event yang sama dengan API
+    ok 1 - buat job lewat dashboard, status berubah, timeline memakai event yang sama dengan API
+      ---
+      duration_ms: 601.833962
+      type: 'test'
+      ...
+    # Subtest: keamanan: CSP, Host, CSRF, file statis whitelist
+    ok 2 - keamanan: CSP, Host, CSRF, file statis whitelist
+      ---
+      duration_ms: 438.648563
+      type: 'test'
+      ...
+    # Subtest: API mati: baca tetap jalan dari SQLite, buat job 502 dengan pesan jelas
+    ok 3 - API mati: baca tetap jalan dari SQLite, buat job 502 dengan pesan jelas
+      ---
+      duration_ms: 376.516728
+      type: 'test'
+      ...
+    # Subtest: database belum ada: 503, dashboard tidak membuat file; pulih setelah API start
+    ok 4 - database belum ada: 503, dashboard tidak membuat file; pulih setelah API start
+      ---
+      duration_ms: 291.116181
+      type: 'test'
+      ...
+    1..4
+ok 11 - proses dashboard (API + worker + dashboard sungguhan)
+  ---
+  duration_ms: 1708.816563
+  type: 'suite'
+  ...
+# Subtest: happy path: PENDING -> SUCCEEDED, laporan tertulis
+ok 12 - happy path: PENDING -> SUCCEEDED, laporan tertulis
+  ---
+  duration_ms: 355.978587
+  type: 'test'
+  ...
+# Subtest: validasi input dan route
+ok 13 - validasi input dan route
+  ---
+  duration_ms: 200.522233
+  type: 'test'
+  ...
+# Subtest: fault injection ditolak kalau ALLOW_FAULT_INJECTION mati
+ok 14 - fault injection ditolak kalau ALLOW_FAULT_INJECTION mati
+  ---
+  duration_ms: 192.400659
+  type: 'test'
+  ...
+# Subtest: idempotency key: request ulang tidak membuat job baru
+ok 15 - idempotency key: request ulang tidak membuat job baru
+  ---
+  duration_ms: 201.441683
+  type: 'test'
+  ...
+# Subtest: transient error: retry lalu sukses
+ok 16 - transient error: retry lalu sukses
+  ---
+  duration_ms: 464.294264
+  type: 'test'
+  ...
+# Subtest: retry bounded: gagal terus berhenti di MAX_ATTEMPTS
+ok 17 - retry bounded: gagal terus berhenti di MAX_ATTEMPTS
+  ---
+  duration_ms: 428.511564
+  type: 'test'
+  ...
+# Subtest: permanent error: tidak di-retry
+ok 18 - permanent error: tidak di-retry
+  ---
+  duration_ms: 300.895627
+  type: 'test'
+  ...
+# Subtest: job macet: timeout per attempt, lalu FAILED TIMEOUT
+ok 19 - job macet: timeout per attempt, lalu FAILED TIMEOUT
+  ---
+  duration_ms: 972.342254
+  type: 'test'
+  ...
+# Subtest: worker di-kill -9 saat RUNNING: worker lain mengambil alih, sukses sekali
+ok 20 - worker di-kill -9 saat RUNNING: worker lain mengambil alih, sukses sekali
+  ---
+  duration_ms: 2390.865805
+  type: 'test'
+  ...
+# Subtest: worker hilang pada attempt terakhir: FAILED WORKER_LOST
+ok 21 - worker hilang pada attempt terakhir: FAILED WORKER_LOST
+  ---
+  duration_ms: 900.325689
+  type: 'test'
+  ...
+# Subtest: baseline RECOVERY=0: job macet selamanya, tapi terlihat di metrik
+ok 22 - baseline RECOVERY=0: job macet selamanya, tapi terlihat di metrik
+  ---
+  duration_ms: 1548.608668
+  type: 'test'
+  ...
+# Subtest: backpressure: antrean penuh -> 429, replay idempotent tetap dilayani
+ok 23 - backpressure: antrean penuh -> 429, replay idempotent tetap dilayani
+  ---
+  duration_ms: 189.143292
+  type: 'test'
+  ...
+# Subtest: dua worker, banyak job: semua selesai, tidak ada sukses ganda
+ok 24 - dua worker, banyak job: semua selesai, tidak ada sukses ganda
+  ---
+  duration_ms: 1466.276334
+  type: 'test'
+  ...
+# Subtest: crash setelah file ditulis, sebelum commit DB: retry menulis ulang isi identik
+ok 25 - crash setelah file ditulis, sebelum commit DB: retry menulis ulang isi identik
+  ---
+  duration_ms: 1035.683669
+  type: 'test'
+  ...
+# Subtest: crash setelah file ditulis pada attempt terakhir: FAILED, file yatim terdeteksi sebagai warning
+ok 26 - crash setelah file ditulis pada attempt terakhir: FAILED, file yatim terdeteksi sebagai warning
+  ---
+  duration_ms: 925.250604
+  type: 'test'
+  ...
+# Subtest: database terkunci saat commit hasil: tercatat, lalu pulih lewat lease tanpa hasil ganda
+ok 27 - database terkunci saat commit hasil: tercatat, lalu pulih lewat lease tanpa hasil ganda
+  ---
+  duration_ms: 2889.34839
+  type: 'test'
+  ...
+# Subtest: filesystem gagal (path laporan diblokir direktori): FAILED STORAGE, tanpa file tmp
+ok 28 - filesystem gagal (path laporan diblokir direktori): FAILED STORAGE, tanpa file tmp
+  ---
+  duration_ms: 342.507265
+  type: 'test'
+  ...
+# Subtest: worker zombie (SIGSTOP > lease, lalu SIGCONT): hasilnya ditolak, tepat satu sukses
+ok 29 - worker zombie (SIGSTOP > lease, lalu SIGCONT): hasilnya ditolak, tepat satu sukses
+  ---
+  duration_ms: 1695.082009
+  type: 'test'
+  ...
+# Subtest: restart total: API dan worker di-kill -9, dinyalakan ulang dengan WORKER_ID sama
+ok 30 - restart total: API dan worker di-kill -9, dinyalakan ulang dengan WORKER_ID sama
+  ---
+  duration_ms: 1960.23944
+  type: 'test'
+  ...
+# Subtest: kontensi: 4 worker polling 1 ms, 150 job: tidak ada claim ganda, semua konsisten
+not ok 31 - kontensi: 4 worker polling 1 ms, 150 job: tidak ada claim ganda, semua konsisten
+  ---
+  duration_ms: 4587.913492
+  type: 'test'
+  location: '<repo>/test/reliability.test.js:145:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+    + [
+    +   {
+    +     attempt: 1,
+    +     event: 'lease_at_risk',
+    +     jobId: '2f243770-459f-4f2c-8908-546f22f047f8',
+    +     leaseLeftMs: -5,
+    +     level: 'error',
+    +     maxAttempts: 3,
+    +     message: 'database is locked',
+    +     svc: 'worker',
+    +     ts: '2026-10-24T16:36:01.781Z',
+    +     workerId: 'w4'
+    +   }
+    + ]
+    - []
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    0:
+      ts: '2026-10-24T16:36:01.781Z'
+      level: 'error'
+      svc: 'worker'
+      event: 'lease_at_risk'
+      workerId: 'w4'
+      jobId: '2f243770-459f-4f2c-8908-546f22f047f8'
+      attempt: 1
+      maxAttempts: 3
+      leaseLeftMs: -5
+      message: 'database is locked'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file://<repo>/test/reliability.test.js:162:10)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# submit: {"attempted":150,"requests":151,"accepted":150,"replayed":0,"busy503":1,"gaveUp":0,"other":{},"uniqueIds":150}
+# Subtest: kontensi lock saat claim: warning claim_busy, bukan error, worker pulih sendiri
+ok 32 - kontensi lock saat claim: warning claim_busy, bukan error, worker pulih sendiri
+  ---
+  duration_ms: 891.495407
+  type: 'test'
+  ...
+# Subtest: fault injection tetap ditolak di worker yang tidak mengizinkannya
+ok 33 - fault injection tetap ditolak di worker yang tidak mengizinkannya
+  ---
+  duration_ms: 332.621297
+  type: 'test'
+  ...
+# Subtest: URL malformed tidak mematikan API (dulu: crash proses)
+ok 34 - URL malformed tidak mematikan API (dulu: crash proses)
+  ---
+  duration_ms: 195.670916
+  type: 'test'
+  ...
+# Subtest: client putus di tengah body: tidak ada job, tercatat warning, API sehat
+ok 35 - client putus di tengah body: tidak ada job, tercatat warning, API sehat
+  ---
+  duration_ms: 229.397347
+  type: 'test'
+  ...
+# Subtest: client putus sebelum menerima respons: retry dengan Idempotency-Key tidak menggandakan job
+ok 36 - client putus sebelum menerima respons: retry dengan Idempotency-Key tidak menggandakan job
+  ---
+  duration_ms: 211.800593
+  type: 'test'
+  ...
+# Subtest: 20 request paralel dengan Idempotency-Key sama: tepat satu job
+ok 37 - 20 request paralel dengan Idempotency-Key sama: tepat satu job
+  ---
+  duration_ms: 227.724582
+  type: 'test'
+  ...
+# Subtest: body lambat dihentikan REQUEST_TIMEOUT_MS; Content-Length berlebih ditolak tanpa membaca body
+ok 38 - body lambat dihentikan REQUEST_TIMEOUT_MS; Content-Length berlebih ditolak tanpa membaca body
+  ---
+  duration_ms: 1217.054867
+  type: 'test'
+  ...
+# Subtest: npm run check aman saat worker aktif: snapshot konsisten, tanpa violation palsu
+ok 39 - npm run check aman saat worker aktif: snapshot konsisten, tanpa violation palsu
+  ---
+  duration_ms: 4530.719537
+  type: 'test'
+  ...
+# submit: {"attempted":150,"requests":150,"accepted":150,"replayed":0,"busy503":0,"gaveUp":0,"other":{},"uniqueIds":150}
+# Subtest: isJsonContentType
+    # Subtest: menerima application/json dengan parameter, menolak tipe lain dan tipe mirip
+    ok 1 - menerima application/json dengan parameter, menolak tipe lain dan tipe mirip
+      ---
+      duration_ms: 1.051405
+      type: 'test'
+      ...
+    1..1
+ok 40 - isJsonContentType
+  ---
+  duration_ms: 2.125374
+  type: 'suite'
+  ...
+# Subtest: POST /jobs: Content-Type (proses API sungguhan)
+    # Subtest: request sah tetap diterima: application/json dengan/ tanpa charset, huruf besar
+    ok 1 - request sah tetap diterima: application/json dengan/ tanpa charset, huruf besar
+      ---
+      duration_ms: 287.738304
+      type: 'test'
+      ...
+    # Subtest: Content-Type tidak didukung: 415, tidak ada job, body error konsisten
+    ok 2 - Content-Type tidak didukung: 415, tidak ada job, body error konsisten
+      ---
+      duration_ms: 202.156677
+      type: 'test'
+      ...
+    # Subtest: perilaku browser lintas situs: simple request ditolak, preflight tidak pernah disetujui
+    ok 3 - perilaku browser lintas situs: simple request ditolak, preflight tidak pernah disetujui
+      ---
+      duration_ms: 203.913018
+      type: 'test'
+      ...
+    # Subtest: urutan pemeriksaan: 413 dan validasi key tetap lebih dulu; 415 tidak memakai Idempotency-Key
+    ok 4 - urutan pemeriksaan: 413 dan validasi key tetap lebih dulu; 415 tidak memakai Idempotency-Key
+      ---
+      duration_ms: 207.659108
+      type: 'test'
+      ...
+    1..4
+ok 41 - POST /jobs: Content-Type (proses API sungguhan)
+  ---
+  duration_ms: 902.316313
+  type: 'suite'
+  ...
+# Subtest: hostguard (unit)
+    # Subtest: parseAllowedHosts: nama[:port], tolak wildcard, skema, path, userinfo, 0.0.0.0
+    ok 1 - parseAllowedHosts: nama[:port], tolak wildcard, skema, path, userinfo, 0.0.0.0
+      ---
+      duration_ms: 2.617342
+      type: 'test'
+      ...
+    # Subtest: allowlist default: loopback + port yang didengar, persis; tanpa wildcard
+    ok 2 - allowlist default: loopback + port yang didengar, persis; tanpa wildcard
+      ---
+      duration_ms: 0.512025
+      type: 'test'
+      ...
+    # Subtest: bind spesifik ikut diizinkan, bind wildcard tidak; ALLOWED_HOSTS tanpa port memakai port yang didengar
+    ok 3 - bind spesifik ikut diizinkan, bind wildcard tidak; ALLOWED_HOSTS tanpa port memakai port yang didengar
+      ---
+      duration_ms: 0.287738
+      type: 'test'
+      ...
+    # Subtest: sameOriginOk: header browser harus same-origin; tanpa header (CLI) diterima
+    ok 4 - sameOriginOk: header browser harus same-origin; tanpa header (CLI) diterima
+      ---
+      duration_ms: 0.296083
+      type: 'test'
+      ...
+    1..4
+ok 42 - hostguard (unit)
+  ---
+  duration_ms: 4.266945
+  type: 'suite'
+  ...
+# Subtest: DNS rebinding dan Origin (proses API + dashboard sungguhan)
+    # Subtest: API: Host tidak dipercaya ditolak di semua route (baca dan tulis), tanpa job
+    ok 1 - API: Host tidak dipercaya ditolak di semua route (baca dan tulis), tanpa job
+      ---
+      duration_ms: 236.474257
+      type: 'test'
+      ...
+    # Subtest: perubahan disengaja pada perilaku lama: request mentah dengan "Host: x" sekarang 403
+    ok 2 - perubahan disengaja pada perilaku lama: request mentah dengan "Host: x" sekarang 403
+      ---
+      duration_ms: 207.95832
+      type: 'test'
+      ...
+    # Subtest: API: Origin/Sec-Fetch-Site browser lintas origin ditolak walau JSON; CLI dan same-origin tetap jalan
+    ok 3 - API: Origin/Sec-Fetch-Site browser lintas origin ditolak walau JSON; CLI dan same-origin tetap jalan
+      ---
+      duration_ms: 217.92454
+      type: 'test'
+      ...
+    # Subtest: SSH port forward (forwarder TCP): port sama langsung jalan; port lain butuh ALLOWED_HOSTS
+    ok 4 - SSH port forward (forwarder TCP): port sama langsung jalan; port lain butuh ALLOWED_HOSTS
+      ---
+      duration_ms: 582.724457
+      type: 'test'
+      ...
+    # Subtest: dashboard: ALLOW_REMOTE=1 tidak lagi mematikan pemeriksaan Host; forward dashboard dengan ALLOWED_HOSTS
+    ok 5 - dashboard: ALLOW_REMOTE=1 tidak lagi mematikan pemeriksaan Host; forward dashboard dengan ALLOWED_HOSTS
+      ---
+      duration_ms: 417.042555
+      type: 'test'
+      ...
+    1..5
+ok 43 - DNS rebinding dan Origin (proses API + dashboard sungguhan)
+  ---
+  duration_ms: 1662.969023
+  type: 'suite'
+  ...
+# Subtest: transaksi dan kontensi SQLite
+    # Subtest: tx: exception di tengah transaksi me-rollback semua tulisan
+    ok 1 - tx: exception di tengah transaksi me-rollback semua tulisan
+      ---
+      duration_ms: 2.515542
+      type: 'test'
+      ...
+    # Subtest: claim saat koneksi lain memegang write lock: gagal bersih, tanpa state setengah jadi
+    ok 2 - claim saat koneksi lain memegang write lock: gagal bersih, tanpa state setengah jadi
+      ---
+      duration_ms: 213.944417
+      type: 'test'
+      ...
+    # Subtest: dua koneksi berebut 50 job: setiap job di-claim tepat satu kali
+    ok 3 - dua koneksi berebut 50 job: setiap job di-claim tepat satu kali
+      ---
+      duration_ms: 695.335362
+      type: 'test'
+      ...
+    1..3
+ok 44 - transaksi dan kontensi SQLite
+  ---
+  duration_ms: 913.744182
+  type: 'suite'
+  ...
+# Subtest: pemeriksa invariant (tidak vacuous)
+    # Subtest: mendeteksi file laporan hilang, checksum salah, dan state tidak konsisten
+    ok 1 - mendeteksi file laporan hilang, checksum salah, dan state tidak konsisten
+      ---
+      duration_ms: 124.651973
+      type: 'test'
+      ...
+    1..1
+ok 45 - pemeriksa invariant (tidak vacuous)
+  ---
+  duration_ms: 125.165488
+  type: 'suite'
+  ...
+# Subtest: kegagalan filesystem
+    # Subtest: rename gagal: file tmp dihapus, error STORAGE non-retryable
+    ok 1 - rename gagal: file tmp dihapus, error STORAGE non-retryable
+      ---
+      duration_ms: 6.938179
+      type: 'test'
+      ...
+    # Subtest: REPORT_DIR berupa file: STORAGE, bukan crash
+    ok 2 - REPORT_DIR berupa file: STORAGE, bukan crash
+      ---
+      duration_ms: 3.468293
+      type: 'test'
+      ...
+    # Subtest: kode error yang bisa pulih sendiri di-retry
+    ok 3 - kode error yang bisa pulih sendiri di-retry
+      ---
+      duration_ms: 0.680962
+      type: 'test'
+      ...
+    1..3
+ok 46 - kegagalan filesystem
+  ---
+  duration_ms: 11.549677
+  type: 'suite'
+  ...
+# Subtest: konfigurasi keamanan dan timing
+    # Subtest: API tetap localhost-only kecuali disengaja
+    ok 1 - API tetap localhost-only kecuali disengaja
+      ---
+      duration_ms: 0.873314
+      type: 'test'
+      ...
+    # Subtest: busy timeout + heartbeat harus di bawah lease
+    ok 2 - busy timeout + heartbeat harus di bawah lease
+      ---
+      duration_ms: 0.271847
+      type: 'test'
+      ...
+    1..2
+ok 47 - konfigurasi keamanan dan timing
+  ---
+  duration_ms: 1.357715
+  type: 'suite'
+  ...
+# Subtest: backoffDelay
+    # Subtest: batas atas tumbuh eksponensial lalu dipotong cap
+    ok 1 - batas atas tumbuh eksponensial lalu dipotong cap
+      ---
+      duration_ms: 1.351474
+      type: 'test'
+      ...
+    # Subtest: full jitter: batas bawah 0
+    ok 2 - full jitter: batas bawah 0
+      ---
+      duration_ms: 0.25787
+      type: 'test'
+      ...
+    # Subtest: selalu dalam rentang untuk random asli
+    ok 3 - selalu dalam rentang untuk random asli
+      ---
+      duration_ms: 0.291251
+      type: 'test'
+      ...
+    # Subtest: attempt tidak valid ditolak
+    ok 4 - attempt tidak valid ditolak
+      ---
+      duration_ms: 0.510101
+      type: 'test'
+      ...
+    1..4
+ok 48 - backoffDelay
+  ---
+  duration_ms: 3.766615
+  type: 'suite'
+  ...
+# Subtest: classify
+    # Subtest: memetakan error class dan retryable
+    ok 1 - memetakan error class dan retryable
+      ---
+      duration_ms: 1.090517
+      type: 'test'
+      ...
+    # Subtest: error tak dikenal = INTERNAL, retryable (tetap dibatasi MAX_ATTEMPTS)
+    ok 2 - error tak dikenal = INTERNAL, retryable (tetap dibatasi MAX_ATTEMPTS)
+      ---
+      duration_ms: 0.148378
+      type: 'test'
+      ...
+    1..2
+ok 49 - classify
+  ---
+  duration_ms: 1.481264
+  type: 'suite'
+  ...
+# Subtest: validateJobRequest
+    # Subtest: default payload diisi
+    ok 1 - default payload diisi
+      ---
+      duration_ms: 0.55516
+      type: 'test'
+      ...
+    # Subtest: menolak input tidak valid
+    ok 2 - menolak input tidak valid
+      ---
+      duration_ms: 0.598139
+      type: 'test'
+      ...
+    # Subtest: simulate ditolak kalau fault injection mati
+    ok 3 - simulate ditolak kalau fault injection mati
+      ---
+      duration_ms: 0.34679
+      type: 'test'
+      ...
+    # Subtest: simulate dinormalisasi kalau fault injection hidup
+    ok 4 - simulate dinormalisasi kalau fault injection hidup
+      ---
+      duration_ms: 0.303962
+      type: 'test'
+      ...
+    1..4
+ok 50 - validateJobRequest
+  ---
+  duration_ms: 2.127138
+  type: 'suite'
+  ...
+# Subtest: buildOrderReport
+    # Subtest: deterministik untuk seed yang sama
+    ok 1 - deterministik untuk seed yang sama
+      ---
+      duration_ms: 2.161063
+      type: 'test'
+      ...
+    # Subtest: jumlah per status konsisten
+    ok 2 - jumlah per status konsisten
+      ---
+      duration_ms: 1.877239
+      type: 'test'
+      ...
+    1..2
+ok 51 - buildOrderReport
+  ---
+  duration_ms: 4.295815
+  type: 'suite'
+  ...
+# Subtest: percentile
+    # Subtest: nearest rank
+    ok 1 - nearest rank
+      ---
+      duration_ms: 0.215345
+      type: 'test'
+      ...
+    1..1
+ok 52 - percentile
+  ---
+  duration_ms: 0.322149
+  type: 'suite'
+  ...
+# Subtest: loadConfig
+    # Subtest: default masuk akal
+    ok 1 - default masuk akal
+      ---
+      duration_ms: 0.641742
+      type: 'test'
+      ...
+    # Subtest: menolak nilai tidak valid
+    ok 2 - menolak nilai tidak valid
+      ---
+      duration_ms: 0.258225
+      type: 'test'
+      ...
+    1..2
+ok 53 - loadConfig
+  ---
+  duration_ms: 1.018697
+  type: 'suite'
+  ...
+# Subtest: store: claim, lease, fencing
+    # Subtest: dua worker tidak bisa claim job yang sama
+    ok 1 - dua worker tidak bisa claim job yang sama
+      ---
+      duration_ms: 2.020289
+      type: 'test'
+      ...
+    # Subtest: lease kedaluwarsa: diambil alih, worker lama ditolak (fencing)
+    ok 2 - lease kedaluwarsa: diambil alih, worker lama ditolak (fencing)
+      ---
+      duration_ms: 2.33822
+      type: 'test'
+      ...
+    # Subtest: recovery mati: job macet tetap RUNNING dan terdeteksi di metrik
+    ok 3 - recovery mati: job macet tetap RUNNING dan terdeteksi di metrik
+      ---
+      duration_ms: 1.34138
+      type: 'test'
+      ...
+    # Subtest: worker hilang pada attempt terakhir: FAILED WORKER_LOST, bukan macet
+    ok 4 - worker hilang pada attempt terakhir: FAILED WORKER_LOST, bukan macet
+      ---
+      duration_ms: 1.067974
+      type: 'test'
+      ...
+    # Subtest: retry hanya sampai max_attempts
+    ok 5 - retry hanya sampai max_attempts
+      ---
+      duration_ms: 2.364339
+      type: 'test'
+      ...
+    # Subtest: idempotency key: request sama dedup, isi beda konflik
+    ok 6 - idempotency key: request sama dedup, isi beda konflik
+      ---
+      duration_ms: 0.941407
+      type: 'test'
+      ...
+    1..6
+ok 54 - store: claim, lease, fencing
+  ---
+  duration_ms: 10.438481
+  type: 'suite'
+  ...
+1..54
+# tests 103
+# suites 26
+# pass 102
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 49722.004642
