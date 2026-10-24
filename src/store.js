@@ -58,9 +58,14 @@ export function createJob(db, { id, type, payload, idempotencyKey, requestHash, 
 /**
  * Ambil satu job siap jalan secara atomik.
  * recovery=true: job RUNNING dengan lease kedaluwarsa dianggap worker-nya mati dan diambil alih.
+ *
+ * `now` boleh berupa angka atau fungsi. Fungsi dievaluasi SETELAH write lock didapat (AUDIT C-2):
+ * kalau waktu diambil sebelum BEGIN IMMEDIATE menunggu lock, lease yang diberikan memendek sebesar
+ * waktu tunggu itu (terukur: 600 ms menjadi 266 ms setelah menunggu 334 ms).
  */
-export function claimNext(db, { workerId, leaseMs, recovery, now }) {
+export function claimNext(db, { workerId, leaseMs, recovery, now: nowArg }) {
   return tx(db, () => {
+    const now = typeof nowArg === 'function' ? nowArg() : nowArg;
     // Loop berhenti: setiap iterasi yang tidak return mengubah satu job RUNNING menjadi FAILED.
     for (;;) {
       const row = stmt(

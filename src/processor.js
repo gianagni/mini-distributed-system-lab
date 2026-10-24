@@ -21,6 +21,14 @@ const STATE_WRITE_BACKOFF = { baseMs: 5, capMs: 50 };
 // timer default ±15.6 ms per sleep). Prediksi durasi percobaan berikutnya memakai waktu tunggu
 // terlama yang BENAR-BENAR teramati, ditambah kelonggaran timer ini.
 const TIMER_SLACK_MS = 25;
+// Retry memakai busy_timeout yang disesuaikan dengan sisa tenggat (lease / jendela retry), tidak
+// pernah lebih besar dari BUSY_TIMEOUT_MS. Tanpa ini, di Windows (tunggu nyata ±1.5x nominal) dengan
+// lease 600 ms / busy_timeout 200 ms tidak ada satu pun retry yang muat (AUDIT C-2).
+const MIN_RETRY_BUSY_TIMEOUT_MS = 1;
+
+function setBusyTimeout(db, ms) {
+  db.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.floor(ms))};`);
+}
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -38,7 +46,7 @@ export async function processNext({ db, cfg, log }) {
     workerId: cfg.workerId,
     leaseMs: cfg.leaseMs,
     recovery: cfg.recovery,
-    now: Date.now(),
+    now: Date.now, // dievaluasi setelah lock didapat, supaya lease tidak termakan waktu tunggu lock
   });
   if (!job) return false;
 
@@ -84,7 +92,16 @@ export async function processNext({ db, cfg, log }) {
   /** Jalankan satu tulisan status dengan retry terbatas khusus SQLITE_BUSY. */
   async function writeState(op, write, fields = {}) {
     let firstBusyAt = null;
-    let busyWaitMs = cfg.busyTimeoutMs; // waktu tunggu BUSY terlama yang teramati, minimal busy_timeout
+    let busyWaitMs = 0; // waktu tunggu BUSY terlama yang teramati
+    let overshootMs = TIMER_SLACK_MS; // selisih terbesar tunggu nyata - busy_timeout nominal, minimal TIMER_SLACK_MS
+    let timeoutMs = cfg.busyTimeoutMs; // busy_timeout yang berlaku untuk percobaan ini
+    try {
+      return await attempt();
+    } finally {
+      if (timeoutMs !== cfg.busyTimeoutMs) setBusyTimeout(db, cfg.busyTimeoutMs);
+    }
+
+    async function attempt() {
     for (let tryNo = 1; ; tryNo++) {
       // Retry tidak boleh berjalan setelah worker tahu lease-nya hilang (tulisannya pasti ditolak).
       if (tryNo > 1 && leaseLost) {
@@ -101,17 +118,31 @@ export async function processNext({ db, cfg, log }) {
         if (busy) {
           firstBusyAt ??= now - tookMs;
           busyWaitMs = Math.max(busyWaitMs, tookMs);
+          overshootMs = Math.max(overshootMs, tookMs - timeoutMs);
         }
         const leaseLeftMs = leaseUntil - now;
-        const waitMs = backoffDelay(tryNo, STATE_WRITE_BACKOFF);
-        const nextTryMs = busyWaitMs + TIMER_SLACK_MS;
-        // Percobaan berikutnya bisa menunggu lock selama nextTryMs; harus selesai sebelum lease habis.
-        const fitsInLease = leaseLeftMs - waitMs - nextTryMs > 0;
         // Heartbeat bisa memperpanjang lease selama retry; total retry tetap dibatasi satu periode lease.
-        const withinWindow = busy && now - firstBusyAt + waitMs + nextTryMs < cfg.leaseMs;
-        if (busy && tryNo < STATE_WRITE_MAX_TRIES && fitsInLease && withinWindow) {
-          log.warn('state_write_busy', { ...ctx, op, try: tryNo, busyWaitMs: tookMs, leaseLeftMs, retryInMs: waitMs });
+        const windowLeftMs = busy ? cfg.leaseMs - (now - firstBusyAt) : 0;
+        const waitMs = backoffDelay(tryNo, STATE_WRITE_BACKOFF);
+        // Tunggu lock percobaan berikutnya (nyata = nominal + overshoot teramati) harus selesai sebelum
+        // lease habis DAN sebelum jendela retry habis.
+        const budgetMs = Math.min(leaseLeftMs, windowLeftMs) - waitMs;
+        const nextTimeoutMs = Math.min(cfg.busyTimeoutMs, Math.floor(budgetMs - overshootMs));
+        if (busy && tryNo < STATE_WRITE_MAX_TRIES && nextTimeoutMs >= MIN_RETRY_BUSY_TIMEOUT_MS) {
+          log.warn('state_write_busy', {
+            ...ctx,
+            op,
+            try: tryNo,
+            busyWaitMs: tookMs,
+            leaseLeftMs,
+            retryInMs: waitMs,
+            nextBusyTimeoutMs: nextTimeoutMs,
+          });
           await sleep(waitMs);
+          if (nextTimeoutMs !== timeoutMs) {
+            setBusyTimeout(db, nextTimeoutMs);
+            timeoutMs = nextTimeoutMs;
+          }
           continue;
         }
         // Status tidak bisa ditulis. Job tetap RUNNING, lease akan kedaluwarsa, lalu di-reclaim.
@@ -125,16 +156,18 @@ export async function processNext({ db, cfg, log }) {
           leaseLeftMs,
           retryMs: firstBusyAt === null ? 0 : now - firstBusyAt,
           maxBusyWaitMs: busy ? busyWaitMs : null,
+          overshootMs: busy ? overshootMs : null,
           reason: !busy
             ? 'non_busy_error'
-            : !fitsInLease
-              ? 'lease_too_short'
-              : !withinWindow
-                ? 'retry_window_exhausted'
-                : 'max_tries',
+            : tryNo >= STATE_WRITE_MAX_TRIES
+              ? 'max_tries'
+              : leaseLeftMs <= windowLeftMs
+                ? 'lease_too_short'
+                : 'retry_window_exhausted',
         });
         return { ok: false };
       }
+    }
     }
   }
 

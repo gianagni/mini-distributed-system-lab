@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { waitUntil } from '../scripts/lib/harness.js';
-import { TERMINAL, report, setup, sleep } from './helpers.js';
+import { TERMINAL, report, setup, sleep, submitJobs, submitSummary, waitForSucceeded } from './helpers.js';
 
 function assertConsistent(s, { allowWarnings = [] } = {}) {
   const r = s.consistency();
@@ -144,8 +144,16 @@ test('restart total: API dan worker di-kill -9, dinyalakan ulang dengan WORKER_I
 
 test('kontensi: 4 worker polling 1 ms, 150 job: tidak ada claim ganda, semua konsisten', async (t) => {
   const s = await setup(t, { POLL_MS: '1', MAX_PENDING: '1000' }, { workers: 4 });
-  for (let i = 0; i < 150; i++) await s.post({ type: 'order_report', payload: { orderCount: 50, seed: i + 1 } });
-  await waitUntil(async () => (await s.get('/metrics')).body.jobs.byStatus.SUCCEEDED === 150, { timeoutMs: 20_000 });
+  // POST /jobs boleh menjawab 503 DB_BUSY di bawah kontensi (AUDIT C-1). Dulu status respons tidak
+  // diperiksa, jadi 503 membuat job < 150 dan test hanya timeout (AUDIT C-2). Sekarang: kontrak
+  // klien (ulangi dengan Idempotency-Key yang sama) dan bukti tepat 150 job, tidak hilang dan tidak ganda.
+  const bodies = Array.from({ length: 150 }, (_, i) => ({ type: 'order_report', payload: { orderCount: 50, seed: i + 1 } }));
+  const sub = await submitJobs(s, bodies, { keyPrefix: 'kontensi' });
+  t.diagnostic(`submit: ${JSON.stringify(submitSummary(sub))}`);
+  assert.equal(sub.gaveUp, 0, `job yang tidak pernah diterima: ${JSON.stringify(submitSummary(sub))}`);
+  assert.equal(new Set(sub.ids).size, 150);
+  assert.equal((await s.get('/metrics')).body.jobs.total, 150, 'tidak ada job ganda karena retry');
+  await waitForSucceeded(s, 150, { timeoutMs: 20_000, submitted: sub });
   const m = (await s.get('/metrics')).body;
   assert.equal(m.counters.duplicateSuccessJobs, 0);
   assertConsistent(s);
@@ -254,17 +262,30 @@ test('body lambat dihentikan REQUEST_TIMEOUT_MS; Content-Length berlebih ditolak
 test('npm run check aman saat worker aktif: snapshot konsisten, tanpa violation palsu', async (t) => {
   const s = await setup(t, { POLL_MS: '1', MAX_PENDING: '1000' }, { workers: 2 });
   // delayMs membuat worker masih memproses selama pemeriksaan berjalan.
-  for (let i = 0; i < 150; i++) {
-    await s.post({ type: 'order_report', payload: { orderCount: 200, seed: i + 1, simulate: { delayMs: 15 } } });
-  }
+  // Dulu: status POST tidak diperiksa dan loop menunggu SUCCEEDED === 150 tanpa batas, jadi satu 503
+  // atau satu job FAILED membuat test berputar sampai timeout 120 s tanpa keterangan. Timeout seperti itu
+  // terjadi sekali di emulasi Windows; penyebabnya tidak terekam (AUDIT C-2). Sekarang: kontrak klien
+  // (Idempotency-Key, ulangi 503) dan tunggu yang dibatasi, yang gagal dengan jumlah job per status.
+  const bodies = Array.from({ length: 150 }, (_, i) => ({
+    type: 'order_report',
+    payload: { orderCount: 200, seed: i + 1, simulate: { delayMs: 15 } },
+  }));
+  const sub = await submitJobs(s, bodies, { keyPrefix: 'check' });
+  t.diagnostic(`submit: ${JSON.stringify(submitSummary(sub))}`);
+  assert.equal(sub.gaveUp, 0, `job yang tidak pernah diterima: ${JSON.stringify(submitSummary(sub))}`);
+  assert.equal(new Set(sub.ids).size, 150);
+  assert.equal((await s.get('/metrics')).body.jobs.total, 150, 'tidak ada job ganda karena retry');
   let checks = 0;
-  for (;;) {
-    const r = s.consistency();
-    checks += 1;
-    assert.deepEqual(r.violations, [], `violation palsu pada pemeriksaan ke-${checks}`);
-    const m = (await s.get('/metrics')).body;
-    if (m.jobs.byStatus.SUCCEEDED === 150) break;
-  }
+  await waitForSucceeded(s, 150, {
+    timeoutMs: 60_000,
+    intervalMs: 0,
+    submitted: sub,
+    onPoll: () => {
+      const r = s.consistency();
+      checks += 1;
+      assert.deepEqual(r.violations, [], `violation palsu pada pemeriksaan ke-${checks}`);
+    },
+  });
   assert.ok(checks > 3, `pemeriksaan harus berjalan beberapa kali selama proses (${checks})`);
   assertConsistent(s);
 });

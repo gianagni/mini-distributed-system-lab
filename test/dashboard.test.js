@@ -2,7 +2,7 @@
 // (API + worker + dashboard, satu file SQLite). Test lama tidak diubah.
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
 import { request as httpRequest } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -15,7 +15,7 @@ import { claimNext, completeAttempt, createJob, failAttempt, getEvents, getJob }
 import { validateJobRequest } from '../src/task.js';
 import { buildTimeline, parseBackoffMs } from '../src/timeline.js';
 import { PRESETS } from '../dashboard/views/create.js';
-import { TERMINAL, report, setup } from './helpers.js';
+import { TERMINAL, removeTempDir, report, setup } from './helpers.js';
 
 const T0 = 1_000_000;
 const LEASE = 1000;
@@ -365,7 +365,7 @@ describe('proses dashboard (API + worker + dashboard sungguhan)', () => {
     t.after(async () => {
       await dash.stop();
       await api?.stop();
-      await rm(dir, { recursive: true, force: true });
+      await removeTempDir(dir);
     });
     const r = await fetch(`${dash.url}/api/overview`);
     assert.equal(r.status, 503);
