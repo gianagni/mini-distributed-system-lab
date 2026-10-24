@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { performance } from 'node:perf_hooks';
+import { isBusyError } from './db.js';
 import { ClientAbortedError, HttpError, ValidationError } from './errors.js';
 import { createHostGuard } from './hostguard.js';
 import { computeMetrics } from './metrics.js';
@@ -177,6 +178,12 @@ export function createApiServer({ db, cfg, log }) {
         res.destroy();
       } else if (err instanceof HttpError) {
         send(err.status, { error: { code: err.code, message: err.message } }, err.headers);
+      } else if (isBusyError(err)) {
+        // Lock SQLite tidak didapat dalam BUSY_TIMEOUT_MS (AUDIT C-1). Transaksi tidak pernah mulai
+        // (atau di-ROLLBACK), jadi tidak ada job yang dibuat; aman diulang, idealnya dengan
+        // Idempotency-Key. 503 + Retry-After (seperti 429), bukan 500 yang tidak bisa dibedakan dari bug.
+        log.warn('db_busy', { method: req.method, path, message: err.message });
+        send(503, { error: { code: 'DB_BUSY', message: 'Database sedang sibuk, coba lagi' } }, { 'retry-after': '1' });
       } else {
         log.error('http_unhandled_error', { path, message: err.message, stack: err.stack });
         send(500, { error: { code: 'INTERNAL', message: 'Kesalahan internal' } });
