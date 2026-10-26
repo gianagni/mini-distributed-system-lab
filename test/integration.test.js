@@ -4,7 +4,7 @@ import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { waitUntil } from '../scripts/lib/harness.js';
-import { TERMINAL, report, setup } from './helpers.js';
+import { TERMINAL, report, setup, submitJobs, submitSummary } from './helpers.js';
 
 test('happy path: PENDING -> SUCCEEDED, laporan tertulis', async (t) => {
   const s = await setup(t);
@@ -139,10 +139,15 @@ test('backpressure: antrean penuh -> 429, replay idempotent tetap dilayani', asy
 
 test('dua worker, banyak job: semua selesai, tidak ada sukses ganda', async (t) => {
   const s = await setup(t, {}, { workers: 2 });
-  const ids = [];
-  for (let i = 0; i < 30; i++) {
-    ids.push((await s.post(report({ delayMs: 10, failTransientTimes: i % 3 === 0 ? 1 : 0 }, 500))).body.id);
-  }
+  // POST /jobs boleh menjawab 503 DB_BUSY (kontrak sejak AUDIT C-1). Dulu status tidak diperiksa: satu 503
+  // berarti hanya 29 job ada dan test menunggu SUCCEEDED === 30 sampai timeout (terbukti di emulasi
+  // Windows 3/40 run, AUDIT C-3). Sekarang kontrak klien: Idempotency-Key, ulangi 503 dengan key sama.
+  const bodies = Array.from({ length: 30 }, (_, i) => report({ delayMs: 10, failTransientTimes: i % 3 === 0 ? 1 : 0 }, 500));
+  const sub = await submitJobs(s, bodies, { keyPrefix: 'dua-worker' });
+  assert.equal(sub.gaveUp, 0, `job yang tidak pernah diterima: ${JSON.stringify(submitSummary(sub))}`);
+  const ids = sub.ids;
+  assert.equal(new Set(ids).size, 30);
+  assert.equal((await s.get('/metrics')).body.jobs.total, 30, 'tidak ada job ganda karena retry');
   await waitUntil(
     async () => {
       const m = (await s.get('/metrics')).body;

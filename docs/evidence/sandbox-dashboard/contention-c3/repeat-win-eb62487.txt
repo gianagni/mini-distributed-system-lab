@@ -1,0 +1,49 @@
+Node v22.22.0, linux 6.18.44-fc-v153, 4 CPU
+10 run, test-timeout 120000 ms, run-timeout 600000 ms, log: <scratch>/rep-win-after
+run   1: FAIL exit=1 tests=111 pass=109 fail=2 cancelled=0 skipped=0 53.3 s load=0.61
+          ✕ urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya [testCodeFailure] <repo>/test/contention.test.js:579:3
+            |-
+          ✕ kontensi: 4 worker polling 1 ms, 150 job: tidak ada claim ganda, semua konsisten [testCodeFailure] <repo>/test/reliability.test.js:145:1
+            |-
+run   2: FAIL exit=1 tests=111 pass=110 fail=1 cancelled=0 skipped=0 53.9 s load=0.5
+          ✕ urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya [testCodeFailure] <repo>/test/contention.test.js:579:3
+            |-
+run   3: FAIL exit=1 tests=111 pass=109 fail=2 cancelled=0 skipped=0 62.7 s load=0.39
+          ✕ urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya [testCodeFailure] <repo>/test/contention.test.js:579:3
+            |-
+          ✕ dua worker, banyak job: semua selesai, tidak ada sukses ganda [testCodeFailure] <repo>/test/integration.test.js:140:1
+            waitUntil: timeout 10000 ms
+run   4: FAIL exit=1 tests=111 pass=110 fail=1 cancelled=0 skipped=0 53.7 s load=0.17
+          ✕ urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya [testCodeFailure] <repo>/test/contention.test.js:579:3
+            |-
+run   5: FAIL exit=1 tests=111 pass=109 fail=2 cancelled=0 skipped=0 51.9 s load=0.18
+          ✕ BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease [testCodeFailure] <repo>/test/contention.test.js:184:3
+            retry 1502 ms harus < lease 1500 ms
+          ✕ urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya [testCodeFailure] <repo>/test/contention.test.js:579:3
+            |-
+run   6: FAIL exit=1 tests=111 pass=109 fail=2 cancelled=0 skipped=0 52.6 s load=0.19
+          ✕ BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease [testCodeFailure] <repo>/test/contention.test.js:184:3
+            retry 1501 ms harus < lease 1500 ms
+          ✕ urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya [testCodeFailure] <repo>/test/contention.test.js:579:3
+            |-
+run   7: FAIL exit=1 tests=111 pass=110 fail=1 cancelled=0 skipped=0 54.2 s load=0.35
+          ✕ urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya [testCodeFailure] <repo>/test/contention.test.js:579:3
+            |-
+run   8: FAIL exit=1 tests=111 pass=110 fail=1 cancelled=0 skipped=0 53.7 s load=0.33
+          ✕ urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya [testCodeFailure] <repo>/test/contention.test.js:579:3
+            |-
+run   9: FAIL exit=1 tests=111 pass=110 fail=1 cancelled=0 skipped=0 53.0 s load=0.25
+          ✕ urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya [testCodeFailure] <repo>/test/contention.test.js:579:3
+            |-
+run  10: FAIL exit=1 tests=111 pass=109 fail=2 cancelled=0 skipped=0 50.9 s load=0.41
+          ✕ BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease [testCodeFailure] <repo>/test/contention.test.js:184:3
+            retry 1509 ms harus < lease 1500 ms
+          ✕ urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya [testCodeFailure] <repo>/test/contention.test.js:579:3
+            |-
+
+Hasil: 0/10 run lulus. Run gagal: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+  urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya: gagal di run 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+  kontensi: 4 worker polling 1 ms, 150 job: tidak ada claim ganda, semua konsisten: gagal di run 1
+  dua worker, banyak job: semua selesai, tidak ada sukses ganda: gagal di run 3
+  BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease: gagal di run 5, 6, 10
+Ringkasan: <scratch>/rep-win-after/summary.json

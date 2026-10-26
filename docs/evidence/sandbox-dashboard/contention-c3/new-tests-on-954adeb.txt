@@ -1,0 +1,16 @@
+    not ok 1 - heartbeat: lease dihitung SETELAH write lock didapat, bukan sebelum menunggu
+      error: 'lease 1792992001409 dihitung 153 ms sebelum lock dilepas'
+    not ok 2 - completeAttempt: finished_at dan waktu event = saat status berubah (setelah lock), bukan sebelum menunggu
+      error: 'succeeded tercatat 150 ms sebelum lock dilepas'
+    not ok 4 - chaining: complete + claim job berikutnya dalam satu transaksi; tanpa chain perilaku lama
+not ok 8 - C-3: heartbeat, timestamp setelah lock, dan chaining (kontensi SQLite sungguhan)
+  error: '3 subtests failed'
+    not ok 1 - complete + claim: keduanya ter-commit, lease job berikutnya dari waktu yang sama (setelah lock)
+      error: 'Provided value cannot be bound to SQLite parameter 2.'
+    not ok 3 - fencing tetap berlaku: complete basi ditolak, claim berikutnya tetap jalan (job lain)
+    not ok 4 - atomik: kalau claim di transaksi itu gagal, status juga tidak tertulis
+      error: 'Missing expected exception.'
+not ok 16 - store: tulisan status + claim berikutnya dalam satu transaksi (AUDIT C-3)
+  error: '3 subtests failed'
+# pass 41
+# fail 6

@@ -1,0 +1,23 @@
+{
+  "node": "v22.22.0",
+  "sqlite": "3.50.4",
+  "platform": "linux",
+  "env": {},
+  "summary": {
+    "runs": 30,
+    "pass": 22,
+    "runsWithLeaseAtRisk": 6,
+    "leaseAtRisk": 6,
+    "heartbeatBusy": 0,
+    "stateWriteBusy": 109,
+    "jobStateWriteFailed": 2,
+    "leaseOverrun": 6,
+    "workerLost": 6,
+    "duplicateSuccess": 0,
+    "post503": 6,
+    "outcomes": {
+      "deadline_passed_write_accepted": 2,
+      "reclaimed_by_other_worker": 4
+    }
+  }
+}

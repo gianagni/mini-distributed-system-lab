@@ -1,0 +1,13 @@
+# Test kontensi capstone saja, TANPA LEASE_TRACE, emulasi profil Windows, 30 run per kode
+## before (954adeb): 23/30 lulus
+run 9: event: 'lease_at_risk' lagMs: 151 leaseLeftMs: -6 lockWaitMs: 299 op: 'write:complete' 
+run 11: event: 'lease_at_risk' lagMs: 151 leaseLeftMs: -16 lockWaitMs: 299 op: 'write:complete' 
+run 12: event: 'lease_at_risk' lagMs: 150 leaseLeftMs: -5 lockWaitMs: 299 op: 'write:complete' 
+run 15: event: 'lease_at_risk' lagMs: 150 lagMs: 151 leaseLeftMs: -25 leaseLeftMs: -5 lockWaitMs: 299 op: 'write:complete' 
+run 24: event: 'lease_at_risk' lagMs: 152 leaseLeftMs: -6 lockWaitMs: 299 op: 'write:complete' 
+run 29: event: 'lease_at_risk' lagMs: 151 leaseLeftMs: -7 lockWaitMs: 299 op: 'write:complete' 
+run 30: event: 'lease_at_risk' lagMs: 150 leaseLeftMs: -4 lockWaitMs: 299 op: 'write:complete' 
+## after (eb62487): 27/30 lulus
+run 1: event: 'job_state_write_failed' event: 'lease_at_risk' lagMs: 151 leaseLeftMs: -286 leaseLeftMs: -34 lockWaitMs: 299 op: 'write:complete' 
+run 4: event: 'lease_at_risk' lagMs: 151 leaseLeftMs: -18 lockWaitMs: 299 op: 'write:complete' 
+run 10: event: 'job_state_write_failed' leaseLeftMs: 165 

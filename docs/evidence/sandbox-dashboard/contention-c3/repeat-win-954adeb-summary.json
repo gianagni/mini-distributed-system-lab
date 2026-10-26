@@ -1,0 +1,355 @@
+{
+  "node": "v22.22.0",
+  "platform": "linux 6.18.44-fc-v153",
+  "cpus": 4,
+  "runs": 10,
+  "testTimeout": 120000,
+  "runTimeout": 600000,
+  "failedRuns": [
+    2,
+    4,
+    7,
+    9
+  ],
+  "hungRuns": [],
+  "failuresByTest": {
+    "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease": [
+      2,
+      4
+    ],
+    "dua worker, banyak job: semua selesai, tidak ada sukses ganda": [
+      7,
+      9
+    ]
+  },
+  "results": [
+    {
+      "run": 1,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 56903,
+      "loadavgAtStart": [
+        0.65,
+        0.43,
+        0.38
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 103,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 56857.923517
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-001.log"
+    },
+    {
+      "run": 2,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 53931,
+      "loadavgAtStart": [
+        0.38,
+        0.39,
+        0.37
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 102,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 53879.452584
+      },
+      "failures": [
+        {
+          "name": "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<scratch>/wt-before/test/contention.test.js:182:3",
+          "error": "retry 1513 ms harus < lease 1500 ms"
+        },
+        {
+          "name": "C-1: SQLITE_BUSY saat menulis status (fault injection, SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<scratch>/wt-before/test/contention.test.js:145:1",
+          "error": "1 subtest failed"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<scratch>/wt-before/test/contention.test.js:182:3",
+          "error": "retry 1513 ms harus < lease 1500 ms"
+        }
+      ],
+      "log": "./run-002.log"
+    },
+    {
+      "run": 3,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 57470,
+      "loadavgAtStart": [
+        0.15,
+        0.32,
+        0.35
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 103,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 57419.185581
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-003.log"
+    },
+    {
+      "run": 4,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 56414,
+      "loadavgAtStart": [
+        0.38,
+        0.35,
+        0.35
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 102,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 56369.811942
+      },
+      "failures": [
+        {
+          "name": "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<scratch>/wt-before/test/contention.test.js:182:3",
+          "error": "retry 1504 ms harus < lease 1500 ms"
+        },
+        {
+          "name": "C-1: SQLITE_BUSY saat menulis status (fault injection, SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<scratch>/wt-before/test/contention.test.js:145:1",
+          "error": "1 subtest failed"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<scratch>/wt-before/test/contention.test.js:182:3",
+          "error": "retry 1504 ms harus < lease 1500 ms"
+        }
+      ],
+      "log": "./run-004.log"
+    },
+    {
+      "run": 5,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 57983,
+      "loadavgAtStart": [
+        0.68,
+        0.45,
+        0.39
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 103,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 57919.916057
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-005.log"
+    },
+    {
+      "run": 6,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 56478,
+      "loadavgAtStart": [
+        1.13,
+        0.61,
+        0.45
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 103,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 56416.602325
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-006.log"
+    },
+    {
+      "run": 7,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 69179,
+      "loadavgAtStart": [
+        0.75,
+        0.61,
+        0.46
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 102,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 69130.384856
+      },
+      "failures": [
+        {
+          "name": "dua worker, banyak job: semua selesai, tidak ada sukses ganda",
+          "depth": 0,
+          "failureType": "testCodeFailure",
+          "location": "<scratch>/wt-before/test/integration.test.js:140:1",
+          "error": "waitUntil: timeout 10000 ms"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "dua worker, banyak job: semua selesai, tidak ada sukses ganda",
+          "depth": 0,
+          "failureType": "testCodeFailure",
+          "location": "<scratch>/wt-before/test/integration.test.js:140:1",
+          "error": "waitUntil: timeout 10000 ms"
+        }
+      ],
+      "log": "./run-007.log"
+    },
+    {
+      "run": 8,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 57205,
+      "loadavgAtStart": [
+        0.42,
+        0.52,
+        0.44
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 103,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 57167.795006
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-008.log"
+    },
+    {
+      "run": 9,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 66513,
+      "loadavgAtStart": [
+        0.37,
+        0.5,
+        0.44
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 102,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 66469.25927
+      },
+      "failures": [
+        {
+          "name": "dua worker, banyak job: semua selesai, tidak ada sukses ganda",
+          "depth": 0,
+          "failureType": "testCodeFailure",
+          "location": "<scratch>/wt-before/test/integration.test.js:140:1",
+          "error": "waitUntil: timeout 10000 ms"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "dua worker, banyak job: semua selesai, tidak ada sukses ganda",
+          "depth": 0,
+          "failureType": "testCodeFailure",
+          "location": "<scratch>/wt-before/test/integration.test.js:140:1",
+          "error": "waitUntil: timeout 10000 ms"
+        }
+      ],
+      "log": "./run-009.log"
+    },
+    {
+      "run": 10,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 55381,
+      "loadavgAtStart": [
+        0.3,
+        0.45,
+        0.42
+      ],
+      "summary": {
+        "tests": 103,
+        "suites": 26,
+        "pass": 103,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 55328.406817
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-010.log"
+    }
+  ]
+}

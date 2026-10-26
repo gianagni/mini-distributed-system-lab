@@ -280,3 +280,111 @@ Ikut diperbaiki di helper, karena keduanya juga bisa membuat test diam sampai 12
 - **Sisa yang terlihat di emulasi +5 ms:** 1 dari 10 run suite penuh (`lease_at_risk`), dan di replay 1 `job_state_write_failed reason=retry_window_exhausted` dari 12 run kode baru (setelah retry, bukan `lease_too_short` tanpa retry). Keduanya error keras, job dipulihkan lewat lease, 0 hilang/ganda/FAILED. Di +2 ms: 0 dari 10.
 - **`extendLease` masih memakai `now` sebelum menunggu lock** (lihat di atas). Belum diubah.
 - **Windows belum diverifikasi ulang.** Biaya flush mesin Windows belum diketahui; `npm run busy-wait-check` sekarang mencetak latency commit dan `setTimeout(1)` nyata.
+
+## C-3: `lease_at_risk` di Windows setelah C-2 (validasi `e48142e`), 2026-10-26
+
+**Hasil Windows (pemilik proyek, commit `e48142e`):** doctor PASS. `npm test` 103 test, 100 lulus, 1 gagal, 2 skip. `busy-wait-check`: commit tulis median 5.23 ms, p90 14.23 ms, max 16.17 ms; `setTimeout(1)` median 15.58 ms. Satu-satunya kegagalan: test kontensi capstone (`reliability.test.js` "kontensi: 4 worker polling 1 ms, 150 job") pada assertion "0 error worker", karena satu `lease_at_risk` (`workerId: w2`, `leaseLeftMs: 15`, `database is locked`). 150/150 diterima, 0 sukses ganda, konsisten.
+
+### Metode
+
+1. **Instrumentasi tanpa mengubah perilaku** (commit `954adeb`, terpisah dari perbaikan supaya "before" diukur dengan kode lama). Setiap event heartbeat membawa: keterlambatan tick (`lagMs`), operasi database sinkron terlama yang memblokir tick itu (`blockedBy`), tunggu lock heartbeat itu sendiri (`lockWaitMs`), `busy_timeout` yang berlaku, batas lease yang tersimpan (`leaseUntil`) dan asalnya (`leaseFrom`, `leaseSetAt`, `leaseSetLockWaitMs`). Baru: `warn lease_overrun` kalau tulisan status mendarat setelah tenggat lease di database. Dengan `LEASE_TRACE=1`: setiap heartbeat sukses (`heartbeat_ok`, `grantedMs` = lease yang benar-benar diberikan), jejak setiap transaksi tulis di semua proses (`tx_trace`: label, mulai, tunggu lock, pegang lock, hasil), dan penghitung polling worker.
+2. **`npm run lease-probe`**: memutar ulang skenario test capstone N kali dan, untuk setiap `lease_at_risk`, memecah anggaran lease (lease hilang sebelum ditulis / jarak sampai tick / tunggu heartbeat), menghitung okupansi write lock di jendela itu dari jejak semua proses, dan menentukan hasilnya **dari database** (`lease_expired` = benar-benar diambil alih; `lease_overrun` = tenggat lewat tanpa diambil alih; selain itu tulisan berikutnya mendarat sebelum tenggat).
+3. **Emulasi Windows yang lebih lengkap** (`contention-c3/harness/wintimer.c`): selain sleep busy handler (seperti `wintick.c` C-2), timeout `epoll_wait` libuv juga dibulatkan ke tick 15.625 ms (timer Node), dan biaya flush mengikuti distribusi Windows yang dilaporkan (70% +4.7 ms, 30% +13.7 ms). Validasi terhadap angka Windows: commit median 5.80 / p90 14.72 / max 15.85 ms (Windows 5.23 / 14.23 / 16.17), `setTimeout(1)` 15.40 ms (15.58), busy 200 ms → 299 ms (296.9). Batas: tidak meniru `LockFileEx`, scheduler, atau disk Windows sebenarnya.
+
+### Akar masalah (terbukti di emulasi; menunggu konfirmasi Windows lewat §1c VALIDATION-PLAN)
+
+Kode `954adeb` (= `e48142e` + instrumentasi), profil Windows, 30 run: 16/30 lulus, **15 `lease_at_risk`, 15/15 dengan tanda yang sama** (`contention-c3/probe/before-954adeb.txt`, contoh lengkap `before-954adeb-example-run-006.json`):
+
+| Komponen anggaran lease 600 ms | Nilai (15 event) |
+|---|---|
+| Lease hilang sebelum ditulis (`now` sebelum lock) | **0 ms** (lease berasal dari claim, yang sudah diperbaiki di C-2) |
+| Claim → tick heartbeat pertama | 306-328 ms, di antaranya **lag 150-163 ms**: tick jatuh tempo pada 150 ms tidak bisa jalan karena `completeAttempt` sedang menunggu lock **299 ms secara sinkron** (`blockedBy: write:complete`) |
+| Tunggu lock heartbeat itu sendiri | 299-304 ms (busy_timeout 200 ms nominal) |
+| Sisa lease saat `lease_at_risk` | **-32 s/d -5 ms** (Windows: +15 ms; tunggu Windows 296.9 ms, sedikit di bawah emulasi) |
+| Okupansi write lock oleh proses lain di jendela itu | 80-91% |
+| Hasil menurut database | **12 diambil alih worker lain** (`lease_expired`, hasil worker lama ditolak fencing: `stale_completion_rejected`), **3 tenggat lewat** tanpa diambil alih (tulisan diterima) |
+
+Rantainya:
+1. `node:sqlite` sinkron: selama tulisan status menunggu lock, event loop worker berhenti, termasuk timer heartbeat.
+2. Busy handler SQLite menghitung sleep nominal; Windows membulatkan setiap sleep ke tick 15.6 ms, jadi `BUSY_TIMEOUT_MS` 200 = ±297 ms nyata.
+3. Commit pertama gagal BUSY (±297 ms), heartbeat yang tertunda langsung jalan lalu gagal BUSY juga (±297 ms): 2 x 297 + jeda > 600. Aturan konfigurasi `BUSY_TIMEOUT_MS + HEARTBEAT_MS < LEASE_MS` (200 + 150 < 600) tidak menangkap ini, karena mengasumsikan heartbeat bisa jalan tepat waktu. Syarat sebenarnya untuk urutan ini: `HEARTBEAT_MS + 2 x tunggu_nyata < LEASE_MS` (Linux 550 < 600, Windows 744 > 600). Aturan di `loadConfig` **tidak** diperketat karena akan menolak konfigurasi yang diterima test lama (`storage.test.js`: lease 1000, heartbeat 200, busy 500); dicatat di sini.
+4. Kontensi: write lock dipegang 80-91% waktu di jendela itu oleh commit ber-fsync (create API, claim, complete, porsi hampir sama). Polling claim kosong 85-700 per run, tapi total memegang lock < 3 ms per run: **bukan** sumber tekanan, jadi cek-baca sebelum claim tidak akan membantu.
+
+**Klasifikasi:**
+- **Risiko lease nyata, bukan false positive.** Batas yang dipakai monitor sama dengan `lease_expires_at` di database (sejak C-3 dibaca balik lewat `RETURNING`); di 12/15 kasus job memang diambil alih.
+- **Pemulihan lewat lease bekerja**: setiap pengambilalihan menghasilkan tepat satu sukses, worker lama ditolak fencing, 0 sukses ganda di semua run.
+- **`now` sebelum lock pada heartbeat (batas yang dicatat di C-2) nyata tapi bukan penyebab event ini.** Terukur terpisah: heartbeat sukses yang menunggu lock 305 ms hanya memberi lease ±295 ms. Test A di bawah: 153 ms hilang di Linux.
+
+### Perbaikan (commit `eb62487`)
+
+| Perubahan | Alasan / bukti |
+|---|---|
+| **Complete/fail + claim job berikutnya dalam satu transaksi** (`andClaim`, worker loop meneruskan `next`) | Mengurangi tekanan write lock tanpa mengubah durabilitas: 58-83% claim terjadi tepat setelah commit status oleh worker yang sama (`chainableClaims` di probe). Satu commit ber-fsync lebih sedikit per job; keduanya tetap di-commit sebelum dipakai, atomik. Claim commit per run 148 → 29 (median). Saat worker berhenti tidak ada claim baru, dan job yang sudah di-claim tetap diproses |
+| `extendLease` = transaksi `BEGIN IMMEDIATE` ber-fence, `now` setelah lock, `RETURNING lease_expires_at` | Lease yang diberikan heartbeat tidak lagi termakan tunggu lock-nya sendiri; monitor memakai nilai yang tersimpan |
+| `completeAttempt` / `failAttempt`: `now` setelah lock (satu nilai per transaksi) | `finished_at`, `next_run_at`, dan urutan event mencerminkan kapan status berubah. Sebelumnya `stale_completion_rejected` bisa tercatat lebih awal dari `lease_expired` yang menyebabkannya |
+| Batas busy_timeout retry diberikan per transaksi (PRAGMA diset lalu dikembalikan), bukan mengubah state koneksi | Heartbeat yang jalan di sela retry tidak lagi mewarisi batas retry yang dipendekkan (cacat laten; field `busyTimeoutMs` di event heartbeat membuktikannya per event) |
+| `BEGIN IMMEDIATE /* label */` | Terlihat di jejak; fault injection test melewatkan heartbeat seperti saat heartbeat masih UPDATE autocommit |
+
+Tidak diubah, sesuai permintaan: `synchronous`, panjang lease, assertion test lama. Fencing `(lease_owner, attempts)` tidak berubah dan berlaku juga untuk claim yang digabung. Perpanjangan lease setelah tenggat tapi sebelum diambil alih tetap diterima (seperti sebelumnya): aman karena semua tulisan diserialkan oleh write lock.
+
+**Dicoba dan ditolak berdasarkan data (dicatat apa adanya):** mengambil write lock dengan batas waktu NYATA (coba ulang tiap tick, bukan busy handler SQLite). Ini memulihkan arti `BUSY_TIMEOUT_MS` di Windows (tunggu 207 ms, bukan 299) dan lease jarang habis, tapi setiap percobaan jadi lebih pendek sehingga BUSY justru naik. Saya sempat mengimplementasikannya lebih dulu; pengukuran menunjukkan hasilnya **lebih buruk** pada test ini, jadi dibuang.
+
+### Before/after (emulasi profil Windows, skenario test capstone, 30 run per baris)
+
+| Varian | Lulus (0 error worker) | `lease_at_risk` | Lease benar-benar habis | POST 503 | `state_write_busy` |
+|---|---|---|---|---|---|
+| `954adeb` (sebelum) | 16/30 | 15 | 15 | 39 | 117 |
+| perbaikan heartbeat/timestamp saja | 18/30 | 15 | 15 | 30 | 133 |
+| + batas lock waktu nyata (ditolak) | 9/30 | 28 | 7 | 50 | 171 |
+| + batas lock waktu nyata + chaining (ditolak) | 17/30 | 23 | 5 | 16 | 106 |
+| **heartbeat/timestamp + chaining** (varian pra-commit) | **22/30** | **6** | **6** | **6** | **109** |
+| **`eb62487` final** | **20/30** | **11** | **11** | **4** | **83** |
+
+Di semua run: 0 sukses ganda, 0 job hilang.
+
+Cara membaca angka ini dengan jujur: dua pengukuran kode akhir (22/30 dan 20/30, total 42/60 = 70%) vs sebelum 16/30 (53%) adalah perbaikan sedang yang **belum terpisah tegas dari variasi** (Fisher exact: p = 0.16 dua sisi, 0.09 satu sisi; final saja vs sebelum: p = 0.43). Efek yang jelas: POST 503 39 → 4-6, claim commit 148 → 29 per run, `state_write_busy` 117 → 83-109, lease heartbeat yang diberikan minimal 565 ms (sebelumnya bisa ±295 ms). **Mekanismenya tidak hilang**: 11/11 `lease_at_risk` di run final punya tanda yang sama dengan sebelum perbaikan (`claim/complete`, lease hilang sebelum ditulis 0, lag 150-156 ms karena `write:complete` 299 ms, tunggu heartbeat 298-301 ms). Perbaikan ini mengurangi seberapa sering dua tunggu berturut-turut terjadi, tidak membuatnya muat di lease. File: `contention-c3/probe/*.txt` dan `*-summary.json`. Varian di tengah diukur dari tree yang belum di-commit dengan switch eksperimen sementara (sudah dihapus); baris final diukur dari commit `eb62487`.
+
+**Tanpa jejak** (`LEASE_TRACE` menambah tulisan stdout di setiap proses dan ikut menaikkan kontensi, jadi angka probe di atas pesimis): test capstone saja, emulasi profil Windows, 30 run per kode (`contention-c3/capstone-only-no-trace.txt`):
+
+| Kode | Lulus | Error yang menggagalkan |
+|---|---|---|
+| `954adeb` (sebelum) | 23/30 | 8 `lease_at_risk` di 7 run, semuanya `blockedBy write:complete`, lag 150-152 ms, tunggu heartbeat 299 ms, sisa lease -25 s/d -4 ms |
+| `eb62487` | 27/30 | 2 `lease_at_risk` (tanda yang sama), 2 `job_state_write_failed` (retry habis di dalam lease) |
+
+Arah sama dengan probe, tapi lagi-lagi belum terpisah tegas dari variasi (Fisher exact p = 0.30). Pesan gagal test capstone sekarang sudah memuat sebabnya (`blockedBy`, `lagMs`, `lockWaitMs`, `leaseFrom`) tanpa perlu probe.
+
+Suite penuh (`npm run test:repeat`, 10 run per baris, `contention-c3/repeat-*`):
+
+| Lingkungan | Hasil | Catatan |
+|---|---|---|
+| `eb62487`, Linux biasa | 10/10 | |
+| `954adeb`, emulasi profil Windows | 6/10 | Gagal: "BUSY terus-menerus" 2x, "dua worker, banyak job" 2x. Keduanya sudah ada sebelum C-3, lihat di bawah |
+| `eb62487`, emulasi profil Windows | 0/10 | Test baru E gagal 10/10 (**kesalahan test saya**, lihat di bawah), "BUSY terus-menerus" 3x, "dua worker" 1x, capstone 1x |
+| tree akhir (test E dan "dua worker" diperbaiki), Linux biasa | 10/10 | |
+| tree akhir, emulasi profil Windows | 7/10 | "BUSY terus-menerus" 2x (sudah ada sebelumnya); capstone 1x: `lease_at_risk` dengan tanda yang sama (`claim`, lag 151 ms, `write:complete`, tunggu 299 ms, sisa -17 ms) + `job_state_write_failed` untuk job yang sama |
+
+### Kesalahan test yang ditemukan lewat emulasi (dicatat apa adanya)
+
+- **Test E versi pertama gagal 10/10 di emulasi Windows.** Lock dipegang tetap 430 ms. Di Linux itu membuat commit dan heartbeat sama-sama BUSY (200 + 200), tapi di Windows heartbeat baru mulai ±300 ms dan mendapat lock saat dilepas pada 430 ms, jadi tidak pernah BUSY. Test itu akan gagal juga di Windows sungguhan. Diperbaiki di test: tunggu nyata busy_timeout 200 ms diukur dulu di mesin itu (minimum dari 3), lock dipegang `2 x tunggu + 40 ms`, dan batas bawah assertion 190 ms (tunggu tidak mungkin lebih pendek dari nominal), bukan angka kalibrasi. Setelah itu: 30/30 di emulasi, 20/20 di Linux.
+- **"dua worker, banyak job" (`integration.test.js`, sudah ada sebelum C-3) mengabaikan status POST.** Satu `503 DB_BUSY` berarti hanya 29 job ada dan test menunggu `SUCCEEDED === 30` sampai timeout 10 s. Terbukti di emulasi: 3/40 run, setiap kegagalan = satu 503, 29 job SUCCEEDED, 0 RUNNING/PENDING, worker hidup. Pola yang sama dengan yang C-2 perbaiki di test 150 job. Diperbaiki di test: `submitJobs` (Idempotency-Key, ulangi 503), ditambah assertion 0 gagal kirim, 30 id unik, `jobs.total = 30`. Semua assertion lama tetap.
+
+### Temuan yang sudah ada sebelum C-3, tidak diperbaiki di sini
+
+"BUSY terus-menerus" (C-1, `contention.test.js`) gagal 2/10 (`954adeb`) dan 3/10 (`eb62487`) di emulasi profil Windows: `retryMs` 1501-1509 ms, assertion `< lease 1500 ms`. Shim C-3 juga membulatkan timer Node, jadi `sleep(5-50 ms)` backoff retry menjadi kelipatan 15.6 ms, dan prediksi retry C-2 hanya memperhitungkan molornya tunggu lock, bukan molornya sleep backoff. Di Windows sungguhan test ini lulus (laporan `e48142e`), jadi belum terbukti di Windows. Usulan (belum diterapkan, di luar lingkup C-3): ukur molor sleep backoff yang teramati dan kurangkan dari anggaran retry seperti `overshootMs`.
+
+### Test regresi (kontensi SQLite sungguhan: thread lain dengan koneksinya sendiri memegang write lock dengan waktu yang ditentukan)
+
+| Test | Di `954adeb` | Di `eb62487` |
+|---|---|---|
+| A. heartbeat: lease dihitung setelah lock didapat | **gagal**: "lease dihitung 153 ms sebelum lock dilepas" | lulus |
+| D. `completeAttempt`: `finished_at`/event setelah lock | **gagal**: "succeeded tercatat 150 ms sebelum lock dilepas" | lulus |
+| E. urutan Windows (commit BUSY, heartbeat tertunda lalu BUSY): `lease_at_risk` wajib ada, dengan `blockedBy write:complete`, `lagMs`, `busyTimeoutMs` konfigurasi, `leaseUntil` = batas di database, dan `lease_overrun` tercatat kalau commit mendarat setelah tenggat | lulus (test karakterisasi: memastikan risiko tidak disembunyikan dan bukan false positive, bukan before/after) | lulus |
+| Chaining: complete + claim berikutnya satu transaksi, tanpa chain perilaku lama | **gagal** (fitur baru) | lulus |
+| Unit store (4): atomik (claim gagal → status juga di-ROLLBACK), fencing tetap menolak complete basi, satu evaluasi waktu per transaksi, tanpa `andClaim` return lama | **gagal** 3 dari 4 (fitur baru) | lulus |
+
+Perubahan pada test lama (C-3): (1) `injector()` di `contention.test.js`: heartbeat (sekarang transaksi berlabel) tidak dihitung sebagai "BEGIN ke-n", supaya penomoran dan semantik test C-1 tetap sama; (2) "dua worker, banyak job": loop POST memakai kontrak 503 (lihat di atas). Tidak ada assertion lama yang dihapus atau dilonggarkan. Bukti kegagalan di kode lama: `contention-c3/new-tests-on-954adeb.txt`.
+
+### Risiko yang tersisa dan keputusan yang dibutuhkan
+
+- **Windows belum diverifikasi ulang.** Semua angka di atas dari emulasi. Yang perlu dari mesin Windows: `npm run lease-probe -- --runs 30` (VALIDATION-PLAN §1c) di `e48142e` **dan** `eb62487`. Akar masalah dianggap terbukti di Windows hanya kalau tanda `lease_at_risk` di sana sama (`claim/complete`, `lost=0`, `blockedBy write:complete` ±297 ms, tunggu heartbeat ±297 ms).
+- **Test capstone masih bisa gagal di storage Windows ini** (emulasi: 8-10 dari 30 run, semuanya dengan tanda di atas). Setiap kegagalan yang tersisa adalah risiko lease nyata dengan sebab yang tercatat, bukan salah klasifikasi. Sumbernya tetap kombinasi: event loop terblokir oleh tunggu lock sinkron, `busy_timeout` ±1.5x di Windows, dan okupansi write lock ±80% dari commit ber-fsync di bawah klien yang mengirim secepat mungkin. Opsi berikutnya, semuanya butuh keputusan pemilik: (a) lease atau busy test sesuai syarat `HEARTBEAT_MS + 2 x tunggu_nyata < LEASE_MS` (ditolak untuk C-3); (b) `synchronous = NORMAL` (ditolak); (c) **rekomendasi saya**: heartbeat di thread sendiri dengan koneksi SQLite sendiri, supaya heartbeat mencoba lock **bersamaan** dengan commit yang sedang menunggu, bukan sesudahnya. Ini satu-satunya opsi yang menyerang mekanismenya langsung tanpa mengubah lease, busy_timeout, atau durabilitas (menghapus lag ±150 ms dan antrean dua tunggu berurutan). Biaya: perubahan arsitektur worker, koneksi ketiga per proses, dan fencing heartbeat tetap lewat `(lease_owner, attempts)`. Belum diimplementasikan; (d) memperketat validasi konfigurasi ke syarat di atas (mengubah kontrak `loadConfig`).

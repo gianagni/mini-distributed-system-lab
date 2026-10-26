@@ -1,0 +1,247 @@
+{
+  "run": 9,
+  "pass": false,
+  "durationMs": 3875,
+  "settled": true,
+  "submit": {
+    "accepted": 150,
+    "replayed": 0,
+    "busy503": 0,
+    "gaveUp": 0
+  },
+  "byStatus": {
+    "PENDING": 0,
+    "RUNNING": 0,
+    "SUCCEEDED": 150,
+    "FAILED": 0
+  },
+  "duplicateSuccess": 0,
+  "workerLost": 1,
+  "errors": [
+    "lease_at_risk"
+  ],
+  "counts": {
+    "claim_busy": 10,
+    "state_write_busy": 3,
+    "heartbeat_ok": 2,
+    "heartbeat_busy": 0,
+    "lease_at_risk": 1,
+    "lease_overrun": 1,
+    "job_state_write_failed": 0,
+    "stale_completion_rejected": 1
+  },
+  "apiDbBusy": 0,
+  "heartbeatLockWaitMs": {
+    "n": 2,
+    "min": 6,
+    "p50": 94,
+    "p90": 94,
+    "p99": 94,
+    "max": 94
+  },
+  "heartbeatLagMs": {
+    "n": 3,
+    "min": 151,
+    "p50": 151,
+    "p90": 152,
+    "p99": 152,
+    "max": 152
+  },
+  "heartbeatGrantedMs": {
+    "n": 2,
+    "min": 585,
+    "p50": 594,
+    "p90": 594,
+    "p99": 594,
+    "max": 594
+  },
+  "stateWriteBusyWaitMs": {
+    "n": 3,
+    "min": 299,
+    "p50": 299,
+    "p90": 299,
+    "p99": 299,
+    "max": 299
+  },
+  "tx": {
+    "spanMs": 3835,
+    "lockHeldPct": 78,
+    "chainableClaims": 0,
+    "by": {
+      "api:create:ok": {
+        "n": 150,
+        "holdMs": 1415
+      },
+      "worker:claim:empty": {
+        "n": 101,
+        "holdMs": 0
+      },
+      "worker:claim:busy": {
+        "n": 10,
+        "holdMs": 0
+      },
+      "worker:claim:ok": {
+        "n": 27,
+        "holdMs": 258
+      },
+      "worker:complete:ok": {
+        "n": 141,
+        "holdMs": 1308
+      },
+      "worker:complete:busy": {
+        "n": 3,
+        "holdMs": 0
+      },
+      "worker:heartbeat:ok": {
+        "n": 2,
+        "holdMs": 21
+      },
+      "worker:heartbeat:busy": {
+        "n": 1,
+        "holdMs": 0
+      }
+    }
+  },
+  "workerPolls": [
+    {
+      "polls": 41,
+      "jobs": 14,
+      "claimBusy": 3
+    },
+    {
+      "polls": 50,
+      "jobs": 28,
+      "claimBusy": 2
+    },
+    {
+      "polls": 43,
+      "jobs": 22,
+      "claimBusy": 2
+    },
+    {
+      "polls": 58,
+      "jobs": 37,
+      "claimBusy": 2
+    }
+  ],
+  "atRisk": [
+    {
+      "lock": {
+        "windowMs": 614,
+        "lockHeldPct": 83,
+        "holders": {
+          "worker:claim": {
+            "n": 3,
+            "ms": 26.9
+          },
+          "api:create": {
+            "n": 30,
+            "ms": 255.3
+          },
+          "worker:complete": {
+            "n": 26,
+            "ms": 229.5
+          }
+        },
+        "victimTries": [
+          "complete:-1:299ms",
+          "heartbeat:-1:298ms"
+        ]
+      },
+      "jobId": "b1d3ff3f-6474-4664-85bd-051d0ada9a3f",
+      "attempt": 1,
+      "worker": "w2",
+      "phase": "complete",
+      "leaseFrom": "claim",
+      "busyTimeoutMs": 200,
+      "blockedBy": {
+        "op": "write:complete",
+        "ms": 299
+      },
+      "budget": {
+        "leaseMs": 600,
+        "lostBeforeWrittenMs": 0,
+        "sinceWrittenToTickMs": 316,
+        "ofWhichLagMs": 151,
+        "ownLockWaitMs": 298,
+        "leaseLeftMs": -14
+      },
+      "outcome": "reclaimed_by_other_worker",
+      "marginMs": null,
+      "timeline": [
+        {
+          "t": 15,
+          "ev": "job_claimed",
+          "w": "w2"
+        },
+        {
+          "t": 315,
+          "ev": "state_write_busy",
+          "w": "w2",
+          "busyWaitMs": 299,
+          "leaseLeftMs": 285,
+          "nextBusyTimeoutMs": 181
+        },
+        {
+          "t": 614,
+          "ev": "lease_at_risk",
+          "w": "w2",
+          "tick": 1,
+          "lagMs": 151,
+          "lockWaitMs": 298,
+          "leaseLeftMs": -14,
+          "busyTimeoutMs": 200,
+          "blockedBy": {
+            "op": "write:complete",
+            "ms": 299
+          },
+          "phase": "complete"
+        },
+        {
+          "t": 705,
+          "ev": "lease_overrun",
+          "w": "w2",
+          "phase": "complete",
+          "overrunMs": 104
+        },
+        {
+          "t": 705,
+          "ev": "stale_completion_rejected",
+          "w": "w2"
+        }
+      ],
+      "db": [
+        {
+          "t": -140,
+          "ev": "created:0",
+          "w": null
+        },
+        {
+          "t": 0,
+          "ev": "claimed:1",
+          "w": "w2"
+        },
+        {
+          "t": 603,
+          "ev": "lease_expired:1",
+          "w": "w2"
+        },
+        {
+          "t": 603,
+          "ev": "claimed:2",
+          "w": "w1"
+        },
+        {
+          "t": 611,
+          "ev": "succeeded:2",
+          "w": "w1"
+        },
+        {
+          "t": 687,
+          "ev": "stale_completion_rejected:1",
+          "w": "w2"
+        }
+      ]
+    }
+  ]
+}

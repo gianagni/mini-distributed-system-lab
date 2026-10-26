@@ -22,9 +22,9 @@ npm run doctor                # semua OK, termasuk "Port dashboard 127.0.0.1:310
 | | Linux / `nanad` | Windows (PowerShell) |
 |---|---|---|
 | Perintah | `npm test 2>&1 \| tee test-$(hostname).log` | `npm test 2>&1 \| Tee-Object -FilePath test-windows.log` |
-| Hasil diharapkan | `# tests 103`, `# pass 103`, `# fail 0` | `# tests 103`, `# pass 101`, `# skipped 2` (SIGSTOP; pemeriksa `/proc` saat cleanup), `# fail 0` |
+| Hasil diharapkan | `# tests 111`, `# pass 111`, `# fail 0` | `# tests 111`, `# pass 109`, `# skipped 2` (SIGSTOP; pemeriksa `/proc` saat cleanup), `# fail 0`. Test kontensi capstone masih bisa gagal karena `lease_at_risk` (AUDIT C-3, risiko sisa); jalankan §1c |
 
-Node 24 mencetak format `spec` (`ℹ tests 103`, `ℹ pass 101`), bukan TAP. Itu bukan kegagalan. `npm run test:repeat` selalu memakai TAP.
+Node 24 mencetak format `spec` (`ℹ tests 111`, `ℹ pass 109`), bukan TAP. Itu bukan kegagalan. `npm run test:repeat` selalu memakai TAP.
 
 Lalu pengulangan dengan bukti (wajib, terkait AUDIT U-1):
 ```bash
@@ -54,13 +54,35 @@ npm run test:repeat -- --runs 30 --out test-runs/<mesin>-contention test/reliabi
 | Hasil | Arti |
 |---|---|
 | 30/30 lulus | Perbaikan bekerja di mesin ini. Catat juga jumlah `state_write_busy`/`claim_busy` dari baris diagnostik `claim_busy=... state_write_busy=...` di log |
-| `kontensi: 4 worker ...` gagal dengan `lease_at_risk` saja | Kejenuhan lock: satu worker tidak dapat lock sepanjang satu lease. Bandingkan dengan `commit tulis` di `busy-wait.txt`. Bukan salah klasifikasi; lihat keputusan terbuka di AUDIT C-2. **Lampirkan log run itu** |
+| `kontensi: 4 worker ...` gagal dengan `lease_at_risk` saja | Kejenuhan lock: satu worker tidak dapat lock sepanjang dua tunggu berturut-turut (AUDIT C-3). Jangan disimpulkan dari log test saja: jalankan §1c, yang menjelaskan setiap `lease_at_risk` dari database. **Lampirkan log run itu** |
 | `job_state_write_failed reason=lease_too_short` dengan `tries: 1` dan tanpa `state_write_busy` | Regresi C-2 (retry tidak menyesuaikan tenggat). Lampirkan log |
 | Gagal `submit=... gaveUp>0` | `POST /jobs` 503 lebih dari 10x berturut-turut untuk satu job. Lampirkan log (berisi angka attempted/accepted/503) |
 | Gagal `ada job yang berakhir FAILED. byStatus=...` atau `waitUntil: timeout ... byStatus=...` | Job tidak selesai sukses. Pesan memuat jumlah per status, `failedByErrorClass`, hasil pengiriman, dan error worker. Lampirkan log |
 | `EBUSY` / `Cleanup: masih ada file terbuka` | Kebocoran koneksi di test. Lampirkan nama test |
 | Gagal dengan `errorClass: INTERNAL` + `database is locked` | Perbaikan tidak bekerja di mesin ini. Lampirkan log |
 | Error lain | Lampirkan log apa adanya |
+
+## 1c. Diagnosis lease_at_risk (AUDIT C-3, wajib di Windows)
+
+Memutar ulang skenario test kontensi capstone (FAST, 4 worker, `POLL_MS=1`, 150 job) dengan jejak lease dan jejak transaksi tulis, lalu mencocokkan setiap `lease_at_risk` dengan isi database:
+```bash
+npm run lease-probe -- --runs 30 --out test-runs/<mesin>-lease-probe
+```
+Salin seluruh folder (`run-NNN.json` per run + `summary.json`). Baris `at_risk:` di output terminal sudah memuat ringkasannya:
+
+| Field | Arti |
+|---|---|
+| `claim/complete` | Asal batas lease yang berlaku / fase worker saat itu |
+| `left=` | Sisa lease (ms) saat heartbeat gagal, terhadap `lease_expires_at` di database |
+| `lost=` | Lease yang hilang karena `now` diambil sebelum lock didapat. Harus 0 setelah C-3 |
+| `gap=` (`lag`, `blockedBy`) | Jarak dari lease ditulis sampai tick heartbeat; `lag` = keterlambatan tick, `blockedBy` = operasi database sinkron yang memblokirnya |
+| `wait=` | Tunggu lock heartbeat itu sendiri |
+| `lockHeld=` | Persentase waktu write lock dipegang proses lain di jendela itu |
+| `-> reclaimed_by_other_worker` | Lease benar-benar habis dan diambil alih (`lease_expired` di database); hasil worker lama ditolak fencing |
+| `-> deadline_passed_write_accepted` | Tenggat lewat, belum ada yang mengambil alih, tulisan diterima (`lease_overrun`) |
+| `-> next_write_before_deadline` | Risiko nyata tapi tulisan berikutnya mendarat sebelum tenggat |
+
+Yang ingin dibuktikan di Windows: tanda yang sama dengan emulasi (`claim/complete`, `lost=0`, `blockedBy write:complete` ±297 ms, `wait` ±297 ms). Kalau tandanya berbeda (mis. `lost>0`, `blockedBy` lain, atau `lockHeld` rendah), akar masalah C-3 **tidak** berlaku di mesin itu dan perlu dilaporkan.
 
 ## 2. Lab dan dashboard (browser sungguhan)
 
@@ -129,6 +151,7 @@ docs/evidence/<mesin>-dashboard/
   check.txt                             # npm run check setelah §2
   test-runs/                            # folder npm run test:repeat (log per run + summary.json)
   busy-wait.txt                         # output npm run busy-wait-check (§1b)
+  lease-probe/                          # folder npm run lease-probe (§1c)
   host-check.txt                        # output §3a
   csrf-check.txt                        # output terminal §3b + browser dan versinya
   checklist.md                          # tabel §2 dengan hasil per baris, plus OS, versi Node, browser

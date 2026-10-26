@@ -1,0 +1,23 @@
+Node v22.22.0, linux 6.18.44-fc-v153, 4 CPU
+10 run, test-timeout 120000 ms, run-timeout 600000 ms, log: <scratch>/rep2-win
+run   1: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 55.2 s load=0.43
+run   2: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 55.4 s load=0.26
+run   3: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 54.7 s load=0.36
+run   4: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 55.5 s load=0.2
+run   5: FAIL exit=1 tests=111 pass=110 fail=1 cancelled=0 skipped=0 54.3 s load=0.4
+          ✕ BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease [testCodeFailure] <repo>/test/contention.test.js:184:3
+            retry 1512 ms harus < lease 1500 ms
+run   6: FAIL exit=1 tests=111 pass=110 fail=1 cancelled=0 skipped=0 56.0 s load=0.69
+          ✕ BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease [testCodeFailure] <repo>/test/contention.test.js:184:3
+            retry 1502 ms harus < lease 1500 ms
+run   7: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 56.3 s load=0.3
+run   8: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 56.7 s load=0.42
+run   9: FAIL exit=1 tests=111 pass=110 fail=1 cancelled=0 skipped=0 56.5 s load=0.48
+          ✕ kontensi: 4 worker polling 1 ms, 150 job: tidak ada claim ganda, semua konsisten [testCodeFailure] <repo>/test/reliability.test.js:145:1
+            |-
+run  10: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 55.6 s load=0.31
+
+Hasil: 7/10 run lulus. Run gagal: 5, 6, 9
+  BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease: gagal di run 5, 6
+  kontensi: 4 worker polling 1 ms, 150 job: tidak ada claim ganda, semua konsisten: gagal di run 9
+Ringkasan: <scratch>/rep2-win/summary.json

@@ -544,6 +544,27 @@ async function lockHolder(h, { holdMs }) {
   };
 }
 
+/** Waktu nyata yang dihabiskan BEGIN IMMEDIATE dengan busy_timeout `ms` terhadap lock yang dipegang. */
+function measureBusyWait(path, ms) {
+  const a = new DatabaseSync(path);
+  const b = new DatabaseSync(path);
+  try {
+    b.exec(`PRAGMA busy_timeout = ${ms}`);
+    let best = Infinity; // minimum dari 3: pengukuran pertama kadang lebih lambat (cache dingin)
+    for (let i = 0; i < 3; i++) {
+      a.exec('BEGIN IMMEDIATE');
+      const t0 = performance.now();
+      assert.throws(() => b.exec('BEGIN IMMEDIATE'), (e) => e.errcode === 5);
+      best = Math.min(best, performance.now() - t0);
+      a.exec('ROLLBACK');
+    }
+    return Math.round(best);
+  } finally {
+    a.close();
+    b.close();
+  }
+}
+
 describe('C-3: heartbeat, timestamp setelah lock, dan chaining (kontensi SQLite sungguhan)', () => {
   test('heartbeat: lease dihitung SETELAH write lock didapat, bukan sebelum menunggu', async (t) => {
     // Kode lama: now diambil sebelum UPDATE menunggu lock 250 ms -> lease yang diberikan ±350 ms, bukan 600.
@@ -577,13 +598,16 @@ describe('C-3: heartbeat, timestamp setelah lock, dan chaining (kontensi SQLite 
   });
 
   test('urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya', async (t) => {
-    // Konfigurasi FAST (lease 600, heartbeat 150, busy 200). Lock dipegang 430 ms tepat setelah claim:
+    // Konfigurasi FAST (lease 600, heartbeat 150, busy 200). Lock dipegang tepat setelah claim:
     // commit pertama BUSY; heartbeat (jatuh tempo 150 ms) tidak bisa jalan selama commit menunggu lock
     // (node:sqlite sinkron), baru jalan sesudahnya dan BUSY juga. Ini urutan yang ditemukan di setiap
     // lease_at_risk emulasi Windows (15/15). Di Windows satu tunggu 200 ms = ±297 ms, jadi dua tunggu
     // menghabiskan lease 600 ms: risikonya NYATA, dan harus dilaporkan dengan data yang menjelaskannya.
     const h = await harness(t, { leaseMs: 600, heartbeatMs: 150, busyTimeoutMs: 200 });
-    const holder = await lockHolder(h, { holdMs: 430 });
+    // Tunggu nyata busy_timeout 200 ms di mesin ini (Linux ±200, Windows ±297): lock dipegang cukup
+    // lama supaya commit DAN heartbeat sama-sama BUSY, lalu dilepas sebelum retry commit menyerah.
+    const realWaitMs = measureBusyWait(h.path, 200);
+    const holder = await lockHolder(h, { holdMs: 2 * realWaitMs + 40 });
     const running = h.run();
     holder.lock();
     await running;
@@ -594,9 +618,9 @@ describe('C-3: heartbeat, timestamp setelah lock, dan chaining (kontensi SQLite 
     assert.equal(r.phase, 'complete');
     assert.equal(r.leaseFrom, 'claim');
     assert.equal(r.blockedBy?.op, 'write:complete', 'heartbeat tertunda oleh tulisan status yang menunggu lock');
-    assert.ok(r.blockedBy.ms >= 190, `commit menunggu ${r.blockedBy.ms} ms`);
+    assert.ok(r.blockedBy.ms >= 190, `commit menunggu ${r.blockedBy.ms} ms (tunggu nyata terukur ${realWaitMs})`);
     assert.ok(r.lagMs >= 30, `heartbeat seharusnya terlambat, lag ${r.lagMs} ms`);
-    assert.ok(r.lockWaitMs >= 190, `heartbeat menunggu ${r.lockWaitMs} ms`);
+    assert.ok(r.lockWaitMs >= 190, `heartbeat menunggu ${r.lockWaitMs} ms (tunggu nyata terukur ${realWaitMs})`);
     assert.equal(r.busyTimeoutMs, h.cfg.busyTimeoutMs, 'heartbeat memakai batas konfigurasi, bukan batas retry');
     // Bukan false positive: batas yang dipakai monitor = batas yang tersimpan di database saat claim.
     const claimed = getEvents(h.db, JOB_ID).find((e) => e.event === 'claimed');

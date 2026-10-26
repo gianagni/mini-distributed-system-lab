@@ -1,0 +1,337 @@
+{
+  "node": "v22.22.0",
+  "platform": "linux 6.18.44-fc-v153",
+  "cpus": 4,
+  "runs": 10,
+  "testTimeout": 120000,
+  "runTimeout": 600000,
+  "failedRuns": [
+    5,
+    6,
+    9
+  ],
+  "hungRuns": [],
+  "failuresByTest": {
+    "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease": [
+      5,
+      6
+    ],
+    "kontensi: 4 worker polling 1 ms, 150 job: tidak ada claim ganda, semua konsisten": [
+      9
+    ]
+  },
+  "results": [
+    {
+      "run": 1,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 55151,
+      "loadavgAtStart": [
+        0.43,
+        0.53,
+        0.46
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 111,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 55090.01127
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-001.log"
+    },
+    {
+      "run": 2,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 55436,
+      "loadavgAtStart": [
+        0.26,
+        0.47,
+        0.44
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 111,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 55392.416199
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-002.log"
+    },
+    {
+      "run": 3,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 54652,
+      "loadavgAtStart": [
+        0.36,
+        0.46,
+        0.44
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 111,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 54606.953105
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-003.log"
+    },
+    {
+      "run": 4,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 55523,
+      "loadavgAtStart": [
+        0.2,
+        0.4,
+        0.42
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 111,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 55480.640908
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-004.log"
+    },
+    {
+      "run": 5,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 54317,
+      "loadavgAtStart": [
+        0.4,
+        0.42,
+        0.43
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 110,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 54274.248599
+      },
+      "failures": [
+        {
+          "name": "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:184:3",
+          "error": "retry 1512 ms harus < lease 1500 ms"
+        },
+        {
+          "name": "C-1: SQLITE_BUSY saat menulis status (fault injection, SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<repo>/test/contention.test.js:147:1",
+          "error": "1 subtest failed"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:184:3",
+          "error": "retry 1512 ms harus < lease 1500 ms"
+        }
+      ],
+      "log": "./run-005.log"
+    },
+    {
+      "run": 6,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 55989,
+      "loadavgAtStart": [
+        0.69,
+        0.51,
+        0.46
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 110,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 55945.447884
+      },
+      "failures": [
+        {
+          "name": "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:184:3",
+          "error": "retry 1502 ms harus < lease 1500 ms"
+        },
+        {
+          "name": "C-1: SQLITE_BUSY saat menulis status (fault injection, SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<repo>/test/contention.test.js:147:1",
+          "error": "1 subtest failed"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:184:3",
+          "error": "retry 1502 ms harus < lease 1500 ms"
+        }
+      ],
+      "log": "./run-006.log"
+    },
+    {
+      "run": 7,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 56340,
+      "loadavgAtStart": [
+        0.3,
+        0.43,
+        0.44
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 111,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 56295.37503
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-007.log"
+    },
+    {
+      "run": 8,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 56681,
+      "loadavgAtStart": [
+        0.42,
+        0.45,
+        0.44
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 111,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 56621.248998
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-008.log"
+    },
+    {
+      "run": 9,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 56454,
+      "loadavgAtStart": [
+        0.48,
+        0.45,
+        0.45
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 110,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 56415.721458
+      },
+      "failures": [
+        {
+          "name": "kontensi: 4 worker polling 1 ms, 150 job: tidak ada claim ganda, semua konsisten",
+          "depth": 0,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/reliability.test.js:145:1",
+          "error": "|-"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "kontensi: 4 worker polling 1 ms, 150 job: tidak ada claim ganda, semua konsisten",
+          "depth": 0,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/reliability.test.js:145:1",
+          "error": "|-"
+        }
+      ],
+      "log": "./run-009.log"
+    },
+    {
+      "run": 10,
+      "exitCode": 0,
+      "signal": null,
+      "hung": false,
+      "durationMs": 55564,
+      "loadavgAtStart": [
+        0.31,
+        0.42,
+        0.44
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 111,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 55509.73937
+      },
+      "failures": [],
+      "leaves": [],
+      "log": "./run-010.log"
+    }
+  ]
+}

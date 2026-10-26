@@ -1,0 +1,619 @@
+{
+  "node": "v22.22.0",
+  "platform": "linux 6.18.44-fc-v153",
+  "cpus": 4,
+  "runs": 10,
+  "testTimeout": 120000,
+  "runTimeout": 600000,
+  "failedRuns": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "hungRuns": [],
+  "failuresByTest": {
+    "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "kontensi: 4 worker polling 1 ms, 150 job: tidak ada claim ganda, semua konsisten": [
+      1
+    ],
+    "dua worker, banyak job: semua selesai, tidak ada sukses ganda": [
+      3
+    ],
+    "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease": [
+      5,
+      6,
+      10
+    ]
+  },
+  "results": [
+    {
+      "run": 1,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 53303,
+      "loadavgAtStart": [
+        0.61,
+        0.52,
+        0.4
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 109,
+        "fail": 2,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 53259.333191
+      },
+      "failures": [
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        },
+        {
+          "name": "C-3: heartbeat, timestamp setelah lock, dan chaining (kontensi SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<repo>/test/contention.test.js:547:1",
+          "error": "1 subtest failed"
+        },
+        {
+          "name": "kontensi: 4 worker polling 1 ms, 150 job: tidak ada claim ganda, semua konsisten",
+          "depth": 0,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/reliability.test.js:145:1",
+          "error": "|-"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        },
+        {
+          "name": "kontensi: 4 worker polling 1 ms, 150 job: tidak ada claim ganda, semua konsisten",
+          "depth": 0,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/reliability.test.js:145:1",
+          "error": "|-"
+        }
+      ],
+      "log": "./run-001.log"
+    },
+    {
+      "run": 2,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 53930,
+      "loadavgAtStart": [
+        0.5,
+        0.51,
+        0.41
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 110,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 53884.097868
+      },
+      "failures": [
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        },
+        {
+          "name": "C-3: heartbeat, timestamp setelah lock, dan chaining (kontensi SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<repo>/test/contention.test.js:547:1",
+          "error": "1 subtest failed"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        }
+      ],
+      "log": "./run-002.log"
+    },
+    {
+      "run": 3,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 62722,
+      "loadavgAtStart": [
+        0.39,
+        0.48,
+        0.4
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 109,
+        "fail": 2,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 62662.000576
+      },
+      "failures": [
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        },
+        {
+          "name": "C-3: heartbeat, timestamp setelah lock, dan chaining (kontensi SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<repo>/test/contention.test.js:547:1",
+          "error": "1 subtest failed"
+        },
+        {
+          "name": "dua worker, banyak job: semua selesai, tidak ada sukses ganda",
+          "depth": 0,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/integration.test.js:140:1",
+          "error": "waitUntil: timeout 10000 ms"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        },
+        {
+          "name": "dua worker, banyak job: semua selesai, tidak ada sukses ganda",
+          "depth": 0,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/integration.test.js:140:1",
+          "error": "waitUntil: timeout 10000 ms"
+        }
+      ],
+      "log": "./run-003.log"
+    },
+    {
+      "run": 4,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 53684,
+      "loadavgAtStart": [
+        0.17,
+        0.4,
+        0.38
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 110,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 53642.529393
+      },
+      "failures": [
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        },
+        {
+          "name": "C-3: heartbeat, timestamp setelah lock, dan chaining (kontensi SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<repo>/test/contention.test.js:547:1",
+          "error": "1 subtest failed"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        }
+      ],
+      "log": "./run-004.log"
+    },
+    {
+      "run": 5,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 51892,
+      "loadavgAtStart": [
+        0.18,
+        0.37,
+        0.37
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 109,
+        "fail": 2,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 51850.604188
+      },
+      "failures": [
+        {
+          "name": "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:184:3",
+          "error": "retry 1502 ms harus < lease 1500 ms"
+        },
+        {
+          "name": "C-1: SQLITE_BUSY saat menulis status (fault injection, SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<repo>/test/contention.test.js:147:1",
+          "error": "1 subtest failed"
+        },
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        },
+        {
+          "name": "C-3: heartbeat, timestamp setelah lock, dan chaining (kontensi SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<repo>/test/contention.test.js:547:1",
+          "error": "1 subtest failed"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:184:3",
+          "error": "retry 1502 ms harus < lease 1500 ms"
+        },
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        }
+      ],
+      "log": "./run-005.log"
+    },
+    {
+      "run": 6,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 52644,
+      "loadavgAtStart": [
+        0.19,
+        0.35,
+        0.36
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 109,
+        "fail": 2,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 52600.949828
+      },
+      "failures": [
+        {
+          "name": "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:184:3",
+          "error": "retry 1501 ms harus < lease 1500 ms"
+        },
+        {
+          "name": "C-1: SQLITE_BUSY saat menulis status (fault injection, SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<repo>/test/contention.test.js:147:1",
+          "error": "1 subtest failed"
+        },
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        },
+        {
+          "name": "C-3: heartbeat, timestamp setelah lock, dan chaining (kontensi SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<repo>/test/contention.test.js:547:1",
+          "error": "1 subtest failed"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:184:3",
+          "error": "retry 1501 ms harus < lease 1500 ms"
+        },
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        }
+      ],
+      "log": "./run-006.log"
+    },
+    {
+      "run": 7,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 54248,
+      "loadavgAtStart": [
+        0.35,
+        0.36,
+        0.36
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 110,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 54200.341629
+      },
+      "failures": [
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        },
+        {
+          "name": "C-3: heartbeat, timestamp setelah lock, dan chaining (kontensi SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<repo>/test/contention.test.js:547:1",
+          "error": "1 subtest failed"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        }
+      ],
+      "log": "./run-007.log"
+    },
+    {
+      "run": 8,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 53670,
+      "loadavgAtStart": [
+        0.33,
+        0.36,
+        0.36
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 110,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 53625.344189
+      },
+      "failures": [
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        },
+        {
+          "name": "C-3: heartbeat, timestamp setelah lock, dan chaining (kontensi SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<repo>/test/contention.test.js:547:1",
+          "error": "1 subtest failed"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        }
+      ],
+      "log": "./run-008.log"
+    },
+    {
+      "run": 9,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 52977,
+      "loadavgAtStart": [
+        0.25,
+        0.33,
+        0.35
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 110,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 52922.564206
+      },
+      "failures": [
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        },
+        {
+          "name": "C-3: heartbeat, timestamp setelah lock, dan chaining (kontensi SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<repo>/test/contention.test.js:547:1",
+          "error": "1 subtest failed"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        }
+      ],
+      "log": "./run-009.log"
+    },
+    {
+      "run": 10,
+      "exitCode": 1,
+      "signal": null,
+      "hung": false,
+      "durationMs": 50878,
+      "loadavgAtStart": [
+        0.41,
+        0.35,
+        0.36
+      ],
+      "summary": {
+        "tests": 111,
+        "suites": 28,
+        "pass": 109,
+        "fail": 2,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 50831.129853
+      },
+      "failures": [
+        {
+          "name": "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:184:3",
+          "error": "retry 1509 ms harus < lease 1500 ms"
+        },
+        {
+          "name": "C-1: SQLITE_BUSY saat menulis status (fault injection, SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<repo>/test/contention.test.js:147:1",
+          "error": "1 subtest failed"
+        },
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        },
+        {
+          "name": "C-3: heartbeat, timestamp setelah lock, dan chaining (kontensi SQLite sungguhan)",
+          "depth": 0,
+          "failureType": "subtestsFailed",
+          "location": "<repo>/test/contention.test.js:547:1",
+          "error": "1 subtest failed"
+        }
+      ],
+      "leaves": [
+        {
+          "name": "BUSY terus-menerus: retry dibatasi satu periode lease, error keras, attempt tidak terpakai, lalu pulih lewat lease",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:184:3",
+          "error": "retry 1509 ms harus < lease 1500 ms"
+        },
+        {
+          "name": "urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya",
+          "depth": 1,
+          "failureType": "testCodeFailure",
+          "location": "<repo>/test/contention.test.js:579:3",
+          "error": "|-"
+        }
+      ],
+      "log": "./run-010.log"
+    }
+  ]
+}

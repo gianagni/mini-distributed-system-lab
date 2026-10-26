@@ -1,0 +1,15 @@
+Node v22.22.0, linux 6.18.44-fc-v153, 4 CPU
+10 run, test-timeout 120000 ms, run-timeout 600000 ms, log: <scratch>/rep-linux-after
+run   1: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 37.9 s load=0.97
+run   2: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 38.3 s load=0.7
+run   3: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 37.0 s load=0.62
+run   4: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 36.9 s load=0.46
+run   5: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 37.2 s load=0.54
+run   6: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 37.0 s load=0.47
+run   7: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 37.0 s load=0.39
+run   8: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 36.7 s load=0.38
+run   9: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 36.4 s load=0.61
+run  10: ok   exit=0 tests=111 pass=111 fail=0 cancelled=0 skipped=0 36.7 s load=0.53
+
+Hasil: 10/10 run lulus. Run gagal: -
+Ringkasan: <scratch>/rep-linux-after/summary.json
