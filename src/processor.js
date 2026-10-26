@@ -56,29 +56,72 @@ export async function processNext({ db, cfg, log }) {
 
   const ac = new AbortController();
   let leaseLost = false;
-  // Batas lease yang terakhir BERHASIL ditulis. Dipakai untuk memutuskan apakah masih aman
-  // menunggu lock lagi (heartbeat dan retry tulis status).
+  // Batas lease yang terakhir BERHASIL ditulis (= nilai lease_expires_at di database). Dipakai untuk
+  // memutuskan apakah masih aman menunggu lock lagi (heartbeat dan retry tulis status).
   let leaseUntil = job.lease_expires_at;
 
+  // ---- Instrumentasi lease (AUDIT C-3) ----
+  // Setiap event heartbeat membawa cukup data untuk membedakan risiko lease nyata dari false positive:
+  // kapan tick seharusnya jalan vs kapan jalan (event loop terblokir / granularitas timer), operasi
+  // sinkron terlama yang memblokirnya, waktu tunggu lock heartbeat itu sendiri, dan dari mana batas
+  // lease yang berlaku berasal. LEASE_TRACE=1 juga mencatat setiap heartbeat yang berhasil.
+  const claimedAt = job.started_at;
+  let phase = 'task';
+  let busyTimeoutNow = cfg.busyTimeoutMs; // busy_timeout koneksi saat ini (writeState bisa mengubahnya)
+  const lease = { from: 'claim', setLockWaitMs: 0, setAt: claimedAt, tick: 0, expectedAt: performance.now() + cfg.heartbeatMs };
+  let longestBlock = null; // operasi database sinkron terlama sejak tick sebelumnya
+  const noteBlock = (op, ms) => {
+    if (!longestBlock || ms > longestBlock.ms) longestBlock = { op, ms: Math.round(ms) };
+  };
+  const leaseFields = () => ({
+    phase,
+    leaseUntil,
+    leaseFrom: lease.from,
+    leaseSetAt: lease.setAt,
+    leaseSetLockWaitMs: lease.setLockWaitMs,
+    sinceClaimMs: Date.now() - claimedAt,
+  });
+
   const heartbeat = setInterval(() => {
+    const tickStart = performance.now();
+    lease.tick += 1;
+    const tick = lease.tick;
+    // Node menjadwalkan interval berikutnya relatif terhadap awal callback ini.
+    const lagMs = Math.round(tickStart - lease.expectedAt);
+    lease.expectedAt = tickStart + cfg.heartbeatMs;
+    const blockedBy = longestBlock;
+    longestBlock = null;
+    const busyTimeoutMs = busyTimeoutNow;
     const now = Date.now();
     try {
       const ok = extendLease(db, { id: job.id, workerId: cfg.workerId, attempt, leaseMs: cfg.leaseMs, now });
-      if (ok) leaseUntil = now + cfg.leaseMs;
-      else if (!leaseLost) {
+      const lockWaitMs = Math.round(performance.now() - tickStart);
+      noteBlock('heartbeat', lockWaitMs);
+      if (ok) {
+        leaseUntil = now + cfg.leaseMs;
+        lease.from = `heartbeat#${tick}`;
+        lease.setLockWaitMs = lockWaitMs;
+        lease.setAt = Date.now();
+        if (cfg.leaseTrace) {
+          log.info('heartbeat_ok', { ...ctx, tick, tickAt: now, lagMs, blockedBy, lockWaitMs, busyTimeoutMs, ...leaseFields(), grantedMs: leaseUntil - Date.now() });
+        }
+      } else if (!leaseLost) {
         leaseLost = true;
         ac.abort(new LeaseLostError());
       }
     } catch (err) {
+      const lockWaitMs = Math.round(performance.now() - tickStart);
+      noteBlock('heartbeat', lockWaitMs);
       const leaseLeftMs = leaseUntil - Date.now();
+      const fields = { ...ctx, leaseLeftMs, tick, tickAt: now, lagMs, blockedBy, lockWaitMs, busyTimeoutMs, ...leaseFields() };
       if (isBusyError(err)) {
         // Satu heartbeat yang kena lock sudah diperhitungkan (BUSY_TIMEOUT_MS + HEARTBEAT_MS < LEASE_MS).
         // Menjadi error kalau heartbeat berikutnya (yang bisa menunggu lock lagi) mungkin terlambat.
         if (leaseLeftMs <= cfg.heartbeatMs + cfg.busyTimeoutMs) {
-          log.error('lease_at_risk', { ...ctx, leaseLeftMs, message: err.message });
-        } else log.warn('heartbeat_busy', { ...ctx, leaseLeftMs });
+          log.error('lease_at_risk', { ...fields, message: err.message });
+        } else log.warn('heartbeat_busy', fields);
       } else {
-        log.error('heartbeat_error', { ...ctx, leaseLeftMs, message: err.message, code: err.errcode ?? err.code ?? null });
+        log.error('heartbeat_error', { ...fields, message: err.message, code: err.errcode ?? err.code ?? null });
       }
     }
   }, cfg.heartbeatMs);
@@ -95,10 +138,21 @@ export async function processNext({ db, cfg, log }) {
     let busyWaitMs = 0; // waktu tunggu BUSY terlama yang teramati
     let overshootMs = TIMER_SLACK_MS; // selisih terbesar tunggu nyata - busy_timeout nominal, minimal TIMER_SLACK_MS
     let timeoutMs = cfg.busyTimeoutMs; // busy_timeout yang berlaku untuk percobaan ini
+    phase = op;
     try {
-      return await attempt();
+      const r = await attempt();
+      const at = Date.now();
+      // Tulisan status mendarat SETELAH batas lease di database: worker lain boleh saja sudah
+      // mengambil alih (fencing menolak tulisan ini) atau belum (tulisan diterima). Keduanya dicatat.
+      if (r.ok && at > leaseUntil) {
+        log.warn('lease_overrun', { ...ctx, op, overrunMs: at - leaseUntil, accepted: r.value !== false && r.value !== null, ...leaseFields() });
+      }
+      return r;
     } finally {
-      if (timeoutMs !== cfg.busyTimeoutMs) setBusyTimeout(db, cfg.busyTimeoutMs);
+      if (timeoutMs !== cfg.busyTimeoutMs) {
+        setBusyTimeout(db, cfg.busyTimeoutMs);
+        busyTimeoutNow = cfg.busyTimeoutMs;
+      }
     }
 
     async function attempt() {
@@ -110,10 +164,13 @@ export async function processNext({ db, cfg, log }) {
       }
       const tryStart = performance.now();
       try {
-        return { ok: true, value: write() };
+        const value = write();
+        noteBlock(`write:${op}`, performance.now() - tryStart);
+        return { ok: true, value };
       } catch (err) {
         const busy = isBusyError(err);
         const tookMs = Math.round(performance.now() - tryStart);
+        noteBlock(`write:${op}`, tookMs);
         const now = Date.now();
         if (busy) {
           firstBusyAt ??= now - tookMs;
@@ -142,6 +199,7 @@ export async function processNext({ db, cfg, log }) {
           if (nextTimeoutMs !== timeoutMs) {
             setBusyTimeout(db, nextTimeoutMs);
             timeoutMs = nextTimeoutMs;
+            busyTimeoutNow = nextTimeoutMs;
           }
           continue;
         }

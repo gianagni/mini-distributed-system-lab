@@ -19,6 +19,7 @@
     "csrf-check": "node scripts/csrf-check.js",
     "host-check": "node scripts/host-check.js",
     "busy-wait-check": "node --disable-warning=ExperimentalWarning scripts/busy-wait-check.js",
+    "lease-probe": "node --disable-warning=ExperimentalWarning scripts/lease-probe.js",
     "doctor": "node --disable-warning=ExperimentalWarning scripts/doctor.js",
     "clean": "node --disable-warning=ExperimentalWarning scripts/clean.js",
     "compare": "node scripts/compare-results.js"

@@ -43,6 +43,8 @@ export function loadConfig(env = process.env) {
     // RECOVERY=0 mematikan pengambilalihan job dari worker yang mati (mode baseline).
     recovery: env.RECOVERY !== '0',
     allowFaultInjection: env.ALLOW_FAULT_INJECTION === '1',
+    // LEASE_TRACE=1: log setiap heartbeat yang berhasil (diagnosis lease, AUDIT C-3).
+    leaseTrace: env.LEASE_TRACE === '1',
     workerId: env.WORKER_ID || `w-${process.pid}`,
   };
   if (cfg.busyTimeoutMs + cfg.heartbeatMs >= cfg.leaseMs) {

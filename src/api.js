@@ -1,5 +1,5 @@
 import { loadConfig } from './config.js';
-import { openDb } from './db.js';
+import { enableTxTrace, openDb } from './db.js';
 import { createApiServer } from './http.js';
 import { createLogger, installCrashHandlers } from './logger.js';
 
@@ -7,6 +7,7 @@ const cfg = loadConfig();
 const log = createLogger('api');
 installCrashHandlers(log);
 const db = openDb(cfg.dbPath, { busyTimeoutMs: cfg.busyTimeoutMs });
+if (cfg.leaseTrace) enableTxTrace((recs) => log.info('tx_trace', { recs }));
 const server = createApiServer({ db, cfg, log });
 
 server.listen(cfg.port, cfg.host, () => {

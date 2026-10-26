@@ -1,4 +1,4 @@
-import { stmt, tx } from './db.js';
+import { stmt, traced, tx } from './db.js';
 import { BackpressureError, ConflictError } from './errors.js';
 
 // State machine:
@@ -52,7 +52,7 @@ export function createJob(db, { id, type, payload, idempotencyKey, requestHash, 
     ).run(id, idempotencyKey ?? null, requestHash, type, JSON.stringify(payload), maxAttempts, now, now);
     addEvent(db, { jobId: id, attempt: 0, event: 'created', at: now });
     return { job: getJob(db, id), created: true };
-  });
+  }, 'create');
 }
 
 /**
@@ -111,17 +111,19 @@ export function claimNext(db, { workerId, leaseMs, recovery, now: nowArg }) {
       addEvent(db, { jobId: claimed.id, attempt: claimed.attempts, event: 'claimed', workerId, at: now });
       return claimed;
     }
-  });
+  }, 'claim');
 }
 
 /** Perpanjang lease. false = lease sudah bukan milik worker ini. */
 export function extendLease(db, { id, workerId, attempt, leaseMs, now }) {
-  const r = stmt(
-    db,
-    `UPDATE jobs SET lease_expires_at = ?
-     WHERE id = ? AND status = 'RUNNING' AND lease_owner = ? AND attempts = ?`,
-  ).run(now + leaseMs, id, workerId, attempt);
-  return r.changes === 1;
+  return traced('heartbeat', () => {
+    const r = stmt(
+      db,
+      `UPDATE jobs SET lease_expires_at = ?
+       WHERE id = ? AND status = 'RUNNING' AND lease_owner = ? AND attempts = ?`,
+    ).run(now + leaseMs, id, workerId, attempt);
+    return r.changes === 1;
+  });
 }
 
 /** Tandai sukses (fenced). false = attempt ini sudah basi, hasil ditolak. */
@@ -139,7 +141,7 @@ export function completeAttempt(db, { id, workerId, attempt, result, execMs, now
     }
     addEvent(db, { jobId: id, attempt, event: 'succeeded', workerId, at: now });
     return true;
-  });
+  }, 'complete');
 }
 
 /**
@@ -184,5 +186,5 @@ export function failAttempt(db, { id, workerId, attempt, errorClass, message, re
     ).run(now, errorClass, message, execMs, id);
     addEvent(db, { jobId: id, attempt, event: 'failed', workerId, errorClass, message, at: now });
     return { status: 'FAILED' };
-  });
+  }, 'fail');
 }
