@@ -47,6 +47,7 @@ export function openDb(path, { busyTimeoutMs = 1000 } = {}) {
   const db = new DatabaseSync(path);
   // Catatan: node:sqlite sinkron. Menunggu lock memblokir seluruh event loop proses ini.
   db.exec(`PRAGMA busy_timeout = ${Number(busyTimeoutMs) | 0};`);
+  writeBudget.set(db, Number(busyTimeoutMs) | 0);
   db.exec('PRAGMA journal_mode = WAL;');
   db.exec('PRAGMA foreign_keys = ON;');
   db.exec(SCHEMA);
@@ -95,13 +96,46 @@ export function traced(label, fn) {
   }
 }
 
+// ---- Batas tunggu write lock per panggilan (AUDIT C-3) ----
+// Batas default = busy_timeout koneksi. Retry tulis status memakai batas yang lebih pendek; batas itu
+// diberikan per transaksi (PRAGMA diset lalu dikembalikan), bukan dengan mengubah state koneksi,
+// supaya heartbeat yang jalan di sela retry tidak mewarisinya.
+//
+// Dicoba dan DITOLAK berdasarkan pengukuran (AUDIT C-3): batas waktu NYATA dengan coba-ulang tiap tick
+// sebagai ganti busy handler SQLite. Memang memulihkan asumsi BUSY_TIMEOUT_MS (Windows: 200 ms nominal
+// = ±297 ms nyata), tapi setiap percobaan jadi lebih pendek, sehingga BUSY dan lease_at_risk justru
+// naik (emulasi Windows, 30 run: lulus 16 -> 9, POST 503 39 -> 50).
+const writeBudget = new WeakMap(); // koneksi -> busy_timeout default (dari openDb)
+
+/** busy_timeout default koneksi ini (dari openDb, atau PRAGMA-nya untuk koneksi lain). */
+export function busyBudgetOf(db) {
+  return writeBudget.get(db) ?? stmt(db, 'PRAGMA busy_timeout').get().timeout;
+}
+
+/**
+ * BEGIN IMMEDIATE dengan busy_timeout `budgetMs` untuk percobaan ini saja. Label ditulis sebagai komentar
+ * SQL: terlihat di trace SQLite dan bisa dikenali fault injection di test.
+ */
+export function beginImmediate(db, budgetMs, label = null) {
+  const sql = label ? `BEGIN IMMEDIATE /* ${label} */` : 'BEGIN IMMEDIATE';
+  const base = busyBudgetOf(db);
+  if (budgetMs === undefined || budgetMs === base) return db.exec(sql);
+  db.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.floor(budgetMs))};`);
+  try {
+    return db.exec(sql);
+  } finally {
+    db.exec(`PRAGMA busy_timeout = ${base};`);
+  }
+}
+
 /**
  * Transaksi BEGIN IMMEDIATE: ambil write lock di awal supaya
- * dua worker tidak bisa meng-claim job yang sama.
+ * dua worker tidak bisa meng-claim job yang sama. `busyMs`: busy_timeout untuk transaksi ini saja
+ * (default: busy_timeout koneksi), lihat beginImmediate.
  */
-export function tx(db, fn, label = 'tx') {
+export function tx(db, fn, label = 'tx', busyMs = undefined) {
   return traced(label, (acquired) => {
-    db.exec('BEGIN IMMEDIATE');
+    beginImmediate(db, busyMs, label);
     acquired();
     try {
       const result = fn();

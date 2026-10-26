@@ -36,7 +36,7 @@ const pct = (xs, p) => {
   const s = [...xs].sort((a, b) => a - b);
   return s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))];
 };
-const dist = (xs) => ({ n: xs.length, p50: pct(xs, 50), p90: pct(xs, 90), p99: pct(xs, 99), max: xs.length ? Math.max(...xs) : null });
+const dist = (xs) => ({ n: xs.length, min: xs.length ? Math.min(...xs) : null, p50: pct(xs, 50), p90: pct(xs, 90), p99: pct(xs, 99), max: xs.length ? Math.max(...xs) : null });
 const ms = (iso) => Date.parse(iso);
 
 async function oneRun(no) {
@@ -183,7 +183,17 @@ function analyse({ no, env, sub, settled, metrics, durationMs, workers, api, dbE
       const t = txs.map((r) => r.start);
       const spanMs = t.length ? Math.max(...t) - Math.min(...t) : 0;
       const held = holds.reduce((a, h) => a + h.hold, 0);
-      return { spanMs: Math.round(spanMs), lockHeldPct: spanMs ? Math.round((held / spanMs) * 100) : null, by };
+      // Kandidat "complete + claim berikutnya dalam satu transaksi": claim yang berhasil dan tulisan
+      // sebelumnya dari worker yang sama adalah complete/fail yang berhasil (loop worker langsung claim).
+      let chainable = 0;
+      const last = new Map();
+      for (const r of [...txs].sort((x, y) => x.start - y.start)) {
+        if (r.label === 'heartbeat') continue;
+        const prev = last.get(r.proc);
+        if (r.label === 'claim' && r.outcome === 1 && prev && ['complete', 'fail'].includes(prev.label) && prev.outcome === 1) chainable += 1;
+        last.set(r.proc, r);
+      }
+      return { spanMs: Math.round(spanMs), lockHeldPct: spanMs ? Math.round((held / spanMs) * 100) : null, chainableClaims: chainable, by };
     })(),
     workerPolls: stats.map((x) => x && { polls: x.polls, jobs: x.jobs, claimBusy: x.claimBusy }),
     atRisk,

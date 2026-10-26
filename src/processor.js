@@ -18,21 +18,21 @@ export const STATE_WRITE_MAX_TRIES = 50;
 const STATE_WRITE_BACKOFF = { baseMs: 5, capMs: 50 };
 // Waktu tunggu BUSY yang sebenarnya lebih lama dari busy_timeout: busy handler SQLite menghitung
 // durasi sleep nominal, dan sleep OS bisa molor (terukur 0.1-3.4 ms di Linux; di Windows granularitas
-// timer default ±15.6 ms per sleep). Prediksi durasi percobaan berikutnya memakai waktu tunggu
-// terlama yang BENAR-BENAR teramati, ditambah kelonggaran timer ini.
+// timer default ±15.6 ms per sleep, 200 ms nominal = ±297 ms nyata). Prediksi durasi percobaan
+// berikutnya memakai waktu tunggu terlama yang BENAR-BENAR teramati, ditambah kelonggaran timer ini.
 const TIMER_SLACK_MS = 25;
-// Retry memakai busy_timeout yang disesuaikan dengan sisa tenggat (lease / jendela retry), tidak
-// pernah lebih besar dari BUSY_TIMEOUT_MS. Tanpa ini, di Windows (tunggu nyata ±1.5x nominal) dengan
-// lease 600 ms / busy_timeout 200 ms tidak ada satu pun retry yang muat (AUDIT C-2).
+// Retry memakai batas tunggu lock yang disesuaikan dengan sisa tenggat (lease / jendela retry), tidak
+// pernah lebih besar dari BUSY_TIMEOUT_MS (AUDIT C-2). Batas itu diberikan PER PANGGILAN ke transaksi,
+// bukan dengan mengubah busy_timeout koneksi: heartbeat yang jalan selama retry tidak boleh mewarisi
+// batas yang sudah dipendekkan (AUDIT C-3).
 const MIN_RETRY_BUSY_TIMEOUT_MS = 1;
 
-function setBusyTimeout(db, ms) {
-  db.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.floor(ms))};`);
-}
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Claim dan jalankan satu job. Return false kalau tidak ada job siap.
+ * `job`: job yang sudah di-claim (hasil `next` dari panggilan sebelumnya). `chain()`: true = claim job
+ * berikutnya di transaksi tulisan status yang sama; hasilnya { next } kalau ada (AUDIT C-3).
  * Setiap jalur keluar menulis status atau mencatat log error: tidak ada silent failure.
  *
  * Dua fase yang dipisah tegas:
@@ -41,14 +41,24 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  *      kegagalan tugas dan tidak memakai attempt. BUSY diulang terbatas; selain itu, atau kalau
  *      batas habis, job dibiarkan RUNNING dan dipulihkan lewat lease (jalur yang sudah diuji).
  */
-export async function processNext({ db, cfg, log }) {
-  const job = claimNext(db, {
-    workerId: cfg.workerId,
-    leaseMs: cfg.leaseMs,
-    recovery: cfg.recovery,
-    now: Date.now, // dievaluasi setelah lock didapat, supaya lease tidak termakan waktu tunggu lock
-  });
+export async function processNext({ db, cfg, log, job: preclaimed = null, chain = () => false }) {
+  const job =
+    preclaimed ??
+    claimNext(db, {
+      workerId: cfg.workerId,
+      leaseMs: cfg.leaseMs,
+      recovery: cfg.recovery,
+      now: Date.now, // dievaluasi setelah lock didapat, supaya lease tidak termakan waktu tunggu lock
+    });
   if (!job) return false;
+  // Job berikutnya yang di-claim di transaksi yang sama dengan tulisan status (AUDIT C-3).
+  let next = null;
+  const andClaim = () => (chain() ? { leaseMs: cfg.leaseMs, recovery: cfg.recovery } : null);
+  const unchain = (v, claimed) => {
+    if (!claimed) return v;
+    next = v.next;
+    return v.value;
+  };
 
   const attempt = job.attempts;
   const ctx = { jobId: job.id, attempt, maxAttempts: job.max_attempts };
@@ -67,7 +77,6 @@ export async function processNext({ db, cfg, log }) {
   // lease yang berlaku berasal. LEASE_TRACE=1 juga mencatat setiap heartbeat yang berhasil.
   const claimedAt = job.started_at;
   let phase = 'task';
-  let busyTimeoutNow = cfg.busyTimeoutMs; // busy_timeout koneksi saat ini (writeState bisa mengubahnya)
   const lease = { from: 'claim', setLockWaitMs: 0, setAt: claimedAt, tick: 0, expectedAt: performance.now() + cfg.heartbeatMs };
   let longestBlock = null; // operasi database sinkron terlama sejak tick sebelumnya
   const noteBlock = (op, ms) => {
@@ -91,14 +100,15 @@ export async function processNext({ db, cfg, log }) {
     lease.expectedAt = tickStart + cfg.heartbeatMs;
     const blockedBy = longestBlock;
     longestBlock = null;
-    const busyTimeoutMs = busyTimeoutNow;
+    const busyTimeoutMs = cfg.busyTimeoutMs; // selalu batas konfigurasi, tidak pernah batas retry
     const now = Date.now();
     try {
-      const ok = extendLease(db, { id: job.id, workerId: cfg.workerId, attempt, leaseMs: cfg.leaseMs, now });
+      // now dievaluasi SETELAH lock didapat; yang disimpan adalah batas yang tertulis di database.
+      const until = extendLease(db, { id: job.id, workerId: cfg.workerId, attempt, leaseMs: cfg.leaseMs, now: Date.now, busyMs: busyTimeoutMs });
       const lockWaitMs = Math.round(performance.now() - tickStart);
       noteBlock('heartbeat', lockWaitMs);
-      if (ok) {
-        leaseUntil = now + cfg.leaseMs;
+      if (until !== false) {
+        leaseUntil = until;
         lease.from = `heartbeat#${tick}`;
         lease.setLockWaitMs = lockWaitMs;
         lease.setAt = Date.now();
@@ -137,23 +147,16 @@ export async function processNext({ db, cfg, log }) {
     let firstBusyAt = null;
     let busyWaitMs = 0; // waktu tunggu BUSY terlama yang teramati
     let overshootMs = TIMER_SLACK_MS; // selisih terbesar tunggu nyata - busy_timeout nominal, minimal TIMER_SLACK_MS
-    let timeoutMs = cfg.busyTimeoutMs; // busy_timeout yang berlaku untuk percobaan ini
+    let timeoutMs = cfg.busyTimeoutMs; // batas tunggu lock untuk percobaan ini
     phase = op;
-    try {
-      const r = await attempt();
-      const at = Date.now();
-      // Tulisan status mendarat SETELAH batas lease di database: worker lain boleh saja sudah
-      // mengambil alih (fencing menolak tulisan ini) atau belum (tulisan diterima). Keduanya dicatat.
-      if (r.ok && at > leaseUntil) {
-        log.warn('lease_overrun', { ...ctx, op, overrunMs: at - leaseUntil, accepted: r.value !== false && r.value !== null, ...leaseFields() });
-      }
-      return r;
-    } finally {
-      if (timeoutMs !== cfg.busyTimeoutMs) {
-        setBusyTimeout(db, cfg.busyTimeoutMs);
-        busyTimeoutNow = cfg.busyTimeoutMs;
-      }
+    const r = await attempt();
+    const at = Date.now();
+    // Tulisan status mendarat SETELAH batas lease di database: worker lain boleh saja sudah
+    // mengambil alih (fencing menolak tulisan ini) atau belum (tulisan diterima). Keduanya dicatat.
+    if (r.ok && at > leaseUntil) {
+      log.warn('lease_overrun', { ...ctx, op, overrunMs: at - leaseUntil, accepted: r.value !== false && r.value !== null, ...leaseFields() });
     }
+    return r;
 
     async function attempt() {
     for (let tryNo = 1; ; tryNo++) {
@@ -164,7 +167,7 @@ export async function processNext({ db, cfg, log }) {
       }
       const tryStart = performance.now();
       try {
-        const value = write();
+        const value = write(timeoutMs);
         noteBlock(`write:${op}`, performance.now() - tryStart);
         return { ok: true, value };
       } catch (err) {
@@ -196,11 +199,7 @@ export async function processNext({ db, cfg, log }) {
             nextBusyTimeoutMs: nextTimeoutMs,
           });
           await sleep(waitMs);
-          if (nextTimeoutMs !== timeoutMs) {
-            setBusyTimeout(db, nextTimeoutMs);
-            timeoutMs = nextTimeoutMs;
-            busyTimeoutNow = nextTimeoutMs;
-          }
+          timeoutMs = nextTimeoutMs;
           continue;
         }
         // Status tidak bisa ditulis. Job tetap RUNNING, lease akan kedaluwarsa, lalu di-reclaim.
@@ -254,29 +253,37 @@ export async function processNext({ db, cfg, log }) {
       return true;
     }
     if (!taskErr) {
-      const w = await writeState('complete', () =>
-        completeAttempt(db, { id: job.id, workerId: cfg.workerId, attempt, result, execMs: execMs(), now: Date.now() }),
-      );
+      const w = await writeState('complete', (busyMs) => {
+        const c = andClaim();
+        return unchain(completeAttempt(db, { id: job.id, workerId: cfg.workerId, attempt, result, execMs: execMs(), now: Date.now, busyMs, andClaim: c }), c);
+      });
       if (w.ok && w.value) log.info('job_succeeded', { ...ctx, status: 'SUCCEEDED', durationMs: execMs() });
       else if (w.ok) log.warn('stale_completion_rejected', { ...ctx, durationMs: execMs() });
-      return true;
+      return next ? { next } : true;
     }
     const { errorClass, retryable, message } = classify(taskErr);
     const backoffMs = backoffDelay(attempt, { baseMs: cfg.backoffBaseMs, capMs: cfg.backoffCapMs });
     const w = await writeState(
       'fail',
-      () =>
-        failAttempt(db, {
-          id: job.id,
-          workerId: cfg.workerId,
-          attempt,
-          errorClass,
-          message,
-          retryable,
-          backoffMs,
-          execMs: execMs(),
-          now: Date.now(),
-        }),
+      (busyMs) => {
+        const c = andClaim();
+        return unchain(
+          failAttempt(db, {
+            id: job.id,
+            workerId: cfg.workerId,
+            attempt,
+            errorClass,
+            message,
+            retryable,
+            backoffMs,
+            execMs: execMs(),
+            now: Date.now,
+            busyMs,
+            andClaim: c,
+          }),
+          c,
+        );
+      },
       { errorClass, message },
     );
     if (!w.ok) return true;
@@ -285,7 +292,7 @@ export async function processNext({ db, cfg, log }) {
     else if (r.status === 'PENDING') {
       log.warn('job_retry_scheduled', { ...ctx, status: 'PENDING', errorClass, message, backoffMs, durationMs: execMs() });
     } else log.error('job_failed', { ...ctx, status: 'FAILED', errorClass, message, durationMs: execMs() });
-    return true;
+    return next ? { next } : true;
   } finally {
     clearInterval(heartbeat);
   }

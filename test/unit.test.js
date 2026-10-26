@@ -251,3 +251,61 @@ describe('store: claim, lease, fencing', () => {
     );
   });
 });
+
+describe('store: tulisan status + claim berikutnya dalam satu transaksi (AUDIT C-3)', () => {
+  const T0 = 2_000_000;
+  const LEASE = 1000;
+  const ID1 = '00000000-0000-4000-8000-0000000000a1';
+  const ID2 = '00000000-0000-4000-8000-0000000000a2';
+  function two() {
+    const db = openDb(':memory:');
+    for (const [i, id] of [ID1, ID2].entries()) {
+      createJob(db, { id, type: 'order_report', payload: { orderCount: 1, seed: 1 }, idempotencyKey: null, requestHash: 'h', maxAttempts: 3, maxPending: 10, now: T0 + i });
+    }
+    return db;
+  }
+  const andClaim = { leaseMs: LEASE, recovery: true };
+
+  test('complete + claim: keduanya ter-commit, lease job berikutnya dari waktu yang sama (setelah lock)', () => {
+    const db = two();
+    claimNext(db, { workerId: 'A', leaseMs: LEASE, recovery: true, now: T0 + 10 });
+    let calls = 0;
+    const r = completeAttempt(db, { id: ID1, workerId: 'A', attempt: 1, result: {}, execMs: 1, now: () => (calls++, T0 + 50), andClaim });
+    assert.equal(r.value, true);
+    assert.equal(r.next.id, ID2);
+    assert.equal(r.next.lease_owner, 'A');
+    assert.equal(r.next.lease_expires_at, T0 + 50 + LEASE);
+    assert.equal(getJob(db, ID1).status, 'SUCCEEDED');
+    assert.equal(getJob(db, ID2).status, 'RUNNING');
+    assert.equal(calls, 1, "satu transaksi, satu evaluasi waktu");
+  });
+
+  test('tanpa andClaim: return dan perilaku lama tidak berubah', () => {
+    const db = two();
+    claimNext(db, { workerId: 'A', leaseMs: LEASE, recovery: true, now: T0 + 10 });
+    assert.equal(completeAttempt(db, { id: ID1, workerId: 'A', attempt: 1, result: {}, execMs: 1, now: T0 + 50 }), true);
+    assert.equal(getJob(db, ID2).status, 'PENDING');
+  });
+
+  test('fencing tetap berlaku: complete basi ditolak, claim berikutnya tetap jalan (job lain)', () => {
+    const db = two();
+    claimNext(db, { workerId: 'A', leaseMs: LEASE, recovery: true, now: T0 + 10 });
+    claimNext(db, { workerId: 'B', leaseMs: LEASE, recovery: true, now: T0 + 20 }); // B memegang ID2
+    claimNext(db, { workerId: 'C', leaseMs: LEASE, recovery: true, now: T0 + LEASE + 11 }); // lease A habis, C ambil alih ID1
+    const r = completeAttempt(db, { id: ID1, workerId: 'A', attempt: 1, result: {}, execMs: 1, now: T0 + LEASE + 20, andClaim });
+    assert.equal(r.value, false, 'worker lama tidak boleh menimpa status');
+    assert.equal(r.next, null, 'tidak ada job lain yang siap');
+    assert.equal(getJob(db, ID1).lease_owner, 'C');
+    assert.equal(getJob(db, ID1).status, 'RUNNING');
+  });
+
+  test('atomik: kalau claim di transaksi itu gagal, status juga tidak tertulis', () => {
+    const db = two();
+    claimNext(db, { workerId: 'A', leaseMs: LEASE, recovery: true, now: T0 + 10 });
+    // UPDATE status sudah jalan, lalu bagian claim melempar (andClaim.recovery dibaca setelahnya).
+    const andClaimBoom = { leaseMs: LEASE, get recovery() { throw new Error('boom saat claim'); } };
+    assert.throws(() => completeAttempt(db, { id: ID1, workerId: 'A', attempt: 1, result: {}, execMs: 1, now: T0 + 50, andClaim: andClaimBoom }), /boom saat claim/);
+    assert.equal(getJob(db, ID1).status, 'RUNNING', 'complete di-ROLLBACK bersama claim');
+    assert.deepEqual(getEvents(db, ID1).map((e) => e.event), ['created', 'claimed']);
+  });
+});

@@ -29,6 +29,8 @@ const JOB_ID = '00000000-0000-4000-8000-0000000000c1';
  * Bungkus koneksi asli. BEGIN IMMEDIATE ke-n (1 = claim, 2 = tulisan status pertama, 3 = kedua, ...)
  * yang ada di `busy` didahului koneksi lain yang memegang write lock -> SQLITE_BUSY sungguhan.
  * Yang ada di `ioerr` melempar error database non-BUSY (bentuk sama dengan error node:sqlite).
+ * Heartbeat (sejak AUDIT C-3 juga transaksi BEGIN IMMEDIATE, berlabel) tidak dihitung dan tidak
+ * diinjeksi, sama seperti waktu heartbeat masih UPDATE autocommit.
  */
 function injector(db, path, { busy = [], ioerr = [], minBusyWaitMs = 0 } = {}) {
   const locker = new DatabaseSync(path);
@@ -40,7 +42,7 @@ function injector(db, path, { busy = [], ioerr = [], minBusyWaitMs = 0 } = {}) {
     locker,
     db: {
       exec(sql) {
-        if (/^BEGIN IMMEDIATE/.test(sql)) {
+        if (/^BEGIN IMMEDIATE/.test(sql) && !/heartbeat/.test(sql)) {
           begins += 1;
           if (ioerr.includes(begins)) {
             const e = Object.assign(new Error('disk I/O error'), { code: 'ERR_SQLITE_ERROR', errcode: 10 });
@@ -484,5 +486,144 @@ describe('C-2: tunggu job yang dibatasi', () => {
       }),
       /violation palsu/,
     );
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// AUDIT C-3: lease_at_risk di Windows (commit e48142e). Akar masalah terukur: tulisan status yang
+// menunggu lock MEMBLOKIR event loop, jadi heartbeat pertama baru jalan setelahnya, lalu menunggu
+// lock lagi. Di Windows satu tunggu busy_timeout 200 ms = ±297 ms nyata, jadi 2 tunggu > lease 600 ms.
+// Kontensi di sini SQLite sungguhan: thread lain dengan koneksinya sendiri memegang write lock dengan
+// waktu yang ditentukan (bukan delay sintetis di kode yang diuji).
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Thread lain memegang write lock. lock() -> BEGIN IMMEDIATE, dilepas setelah holdMs.
+ * Waktu (lockedAt, releaseAt) dalam ms absolut presisi sub-ms (performance.timeOrigin + now()).
+ */
+async function lockHolder(h, { holdMs }) {
+  const sab = new SharedArrayBuffer(64);
+  const ctl = new Int32Array(sab, 0, 4); // [go, state 1=locked 2=released, -, ready]
+  const f = new Float64Array(sab, 16, 4); // [lockedAt, releaseAt]
+  const w = new Worker(
+    `const { DatabaseSync } = require('node:sqlite');
+     const { workerData: { path, sab, holdMs } } = require('node:worker_threads');
+     const ctl = new Int32Array(sab, 0, 4), f = new Float64Array(sab, 16, 4);
+     const now = () => performance.timeOrigin + performance.now();
+     const d = new DatabaseSync(path);
+     d.exec('PRAGMA busy_timeout = 5000');
+     Atomics.store(ctl, 3, 1); Atomics.notify(ctl, 3);
+     Atomics.wait(ctl, 0, 0);
+     d.exec('BEGIN IMMEDIATE');
+     f[0] = now(); Atomics.store(ctl, 1, 1); Atomics.notify(ctl, 1);
+     const end = f[0] + holdMs;
+     while (now() < end);
+     d.exec('ROLLBACK');
+     f[1] = now(); Atomics.store(ctl, 1, 2);
+     d.close();`,
+    { eval: true, workerData: { path: h.path, sab, holdMs } },
+  );
+  const exited = new Promise((r) => w.once('exit', r));
+  h.adopt({ close: () => w.terminate() }); // pengaman kalau test gagal sebelum thread selesai
+  await waitUntil(async () => Atomics.load(ctl, 3) === 1, { timeoutMs: 5000, intervalMs: 5 });
+  return {
+    exited,
+    /** Ambil lock sekarang dan tunggu (sinkron) sampai benar-benar terpegang. */
+    lock() {
+      Atomics.store(ctl, 0, 1);
+      Atomics.notify(ctl, 0);
+      Atomics.wait(ctl, 1, 0, 5000);
+      assert.equal(Atomics.load(ctl, 1), 1, 'holder harus memegang lock');
+    },
+    get lockedAt() {
+      return f[0];
+    },
+    get releaseAt() {
+      return f[1];
+    },
+  };
+}
+
+describe('C-3: heartbeat, timestamp setelah lock, dan chaining (kontensi SQLite sungguhan)', () => {
+  test('heartbeat: lease dihitung SETELAH write lock didapat, bukan sebelum menunggu', async (t) => {
+    // Kode lama: now diambil sebelum UPDATE menunggu lock 250 ms -> lease yang diberikan ±350 ms, bukan 600.
+    const h = await harness(t, { leaseMs: 600, heartbeatMs: 100, busyTimeoutMs: 2000, leaseTrace: true, simulate: { delayMs: 500 } });
+    const holder = await lockHolder(h, { holdMs: 250 });
+    const running = h.run(); // claim selesai sinkron; tugas tidur 500 ms
+    holder.lock(); // terpegang sebelum tick heartbeat pertama (100 ms)
+    await running;
+    await holder.exited;
+    const waited = h.events.filter((e) => e.event === 'heartbeat_ok' && e.lockWaitMs >= 100);
+    assert.ok(waited.length >= 1, `harus ada heartbeat yang menunggu lock: ${JSON.stringify(h.events.filter((e) => e.event.startsWith('heartbeat')))}`);
+    for (const hb of waited) {
+      assert.ok(hb.leaseUntil >= holder.releaseAt + h.cfg.leaseMs - 2, `lease ${hb.leaseUntil} dihitung ${Math.round(holder.releaseAt + h.cfg.leaseMs - hb.leaseUntil)} ms sebelum lock dilepas`);
+      assert.ok(hb.grantedMs >= h.cfg.leaseMs - 20, `lease yang diberikan ${hb.grantedMs} ms, harus ±${h.cfg.leaseMs}`);
+    }
+    assert.equal(h.job().status, 'SUCCEEDED');
+    assert.deepEqual(h.levels('error'), []);
+  });
+
+  test('completeAttempt: finished_at dan waktu event = saat status berubah (setelah lock), bukan sebelum menunggu', async (t) => {
+    // Kode lama: stale_completion_rejected bisa tercatat SEBELUM lease_expired yang menyebabkannya.
+    const h = await harness(t, { busyTimeoutMs: 2000, simulate: { delayMs: 100 } });
+    const holder = await lockHolder(h, { holdMs: 250 });
+    const running = h.run();
+    holder.lock();
+    await running;
+    await holder.exited;
+    const ev = getEvents(h.db, JOB_ID).find((e) => e.event === 'succeeded');
+    assert.ok(ev.at >= Math.floor(holder.releaseAt), `succeeded tercatat ${Math.round(holder.releaseAt - ev.at)} ms sebelum lock dilepas`);
+    assert.equal(h.job().finished_at, ev.at);
+  });
+
+  test('urutan Windows: commit menunggu lock, heartbeat tertunda lalu BUSY: lease_at_risk dilaporkan dengan sebabnya', async (t) => {
+    // Konfigurasi FAST (lease 600, heartbeat 150, busy 200). Lock dipegang 430 ms tepat setelah claim:
+    // commit pertama BUSY; heartbeat (jatuh tempo 150 ms) tidak bisa jalan selama commit menunggu lock
+    // (node:sqlite sinkron), baru jalan sesudahnya dan BUSY juga. Ini urutan yang ditemukan di setiap
+    // lease_at_risk emulasi Windows (15/15). Di Windows satu tunggu 200 ms = ±297 ms, jadi dua tunggu
+    // menghabiskan lease 600 ms: risikonya NYATA, dan harus dilaporkan dengan data yang menjelaskannya.
+    const h = await harness(t, { leaseMs: 600, heartbeatMs: 150, busyTimeoutMs: 200 });
+    const holder = await lockHolder(h, { holdMs: 430 });
+    const running = h.run();
+    holder.lock();
+    await running;
+    await holder.exited;
+    const risk = h.levels('error').filter((e) => e.event === 'lease_at_risk');
+    assert.equal(risk.length, 1, `lease_at_risk tidak boleh disembunyikan: ${JSON.stringify(h.events.filter((e) => e.level !== 'info'))}`);
+    const [r] = risk;
+    assert.equal(r.phase, 'complete');
+    assert.equal(r.leaseFrom, 'claim');
+    assert.equal(r.blockedBy?.op, 'write:complete', 'heartbeat tertunda oleh tulisan status yang menunggu lock');
+    assert.ok(r.blockedBy.ms >= 190, `commit menunggu ${r.blockedBy.ms} ms`);
+    assert.ok(r.lagMs >= 30, `heartbeat seharusnya terlambat, lag ${r.lagMs} ms`);
+    assert.ok(r.lockWaitMs >= 190, `heartbeat menunggu ${r.lockWaitMs} ms`);
+    assert.equal(r.busyTimeoutMs, h.cfg.busyTimeoutMs, 'heartbeat memakai batas konfigurasi, bukan batas retry');
+    // Bukan false positive: batas yang dipakai monitor = batas yang tersimpan di database saat claim.
+    const claimed = getEvents(h.db, JOB_ID).find((e) => e.event === 'claimed');
+    assert.equal(r.leaseUntil, claimed.at + h.cfg.leaseMs);
+    assert.equal(r.leaseLeftMs <= h.cfg.heartbeatMs + h.cfg.busyTimeoutMs, true);
+    // Hasil akhir: tanpa worker lain tidak ada yang mengambil alih, jadi commit kedua diterima; kalau
+    // mendarat setelah tenggat (Windows), itu WAJIB tercatat sebagai lease_overrun.
+    assert.equal(h.job().status, 'SUCCEEDED');
+    assert.equal(h.job().attempts, 1);
+    const succeededAt = getEvents(h.db, JOB_ID).find((e) => e.event === 'succeeded').at;
+    assert.equal(h.events.some((e) => e.event === 'lease_overrun' && e.accepted), succeededAt > r.leaseUntil);
+  });
+
+  test('chaining: complete + claim job berikutnya dalam satu transaksi; tanpa chain perilaku lama', async (t) => {
+    const h = await harness(t, {});
+    const ID2 = '00000000-0000-4000-8000-0000000000c2';
+    createJob(h.db, { id: ID2, type: 'order_report', payload: { orderCount: 10, seed: 2 }, idempotencyKey: null, requestHash: 'h2', maxAttempts: 3, maxPending: 10, now: Date.now() + 1 });
+    const r1 = await processNext({ db: h.db, cfg: h.cfg, log: { info() {}, warn() {}, error() {} }, chain: () => true });
+    assert.equal(r1.next?.id, ID2, 'job berikutnya di-claim di transaksi complete');
+    const ev = getEvents(h.db, JOB_ID);
+    const ev2 = getEvents(h.db, ID2);
+    assert.equal(ev.find((e) => e.event === 'succeeded').at, ev2.find((e) => e.event === 'claimed').at);
+    const r2 = await processNext({ db: h.db, cfg: h.cfg, log: { info() {}, warn() {}, error() {} }, job: r1.next, chain: () => false });
+    assert.equal(r2, true);
+    assert.equal(getJob(h.db, ID2).status, 'SUCCEEDED');
+    assert.equal(h.job().status, 'SUCCEEDED');
+    assert.equal(await processNext({ db: h.db, cfg: h.cfg, log: { info() {}, warn() {}, error() {} } }), false);
+    assert.deepEqual(h.consistency().violations, []);
   });
 });

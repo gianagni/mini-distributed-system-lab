@@ -41,11 +41,18 @@ log.info('worker_started', {
 const stats = { polls: 0, jobs: 0, claimBusy: 0 };
 if (cfg.leaseTrace) setInterval(() => log.info('worker_stats', { ...stats }), 1000).unref();
 
-while (!stopping) {
+// Job yang sudah di-claim di transaksi tulisan status sebelumnya (AUDIT C-3). Selalu diproses, juga
+// saat berhenti: job itu sudah RUNNING atas nama worker ini. Saat berhenti tidak ada claim baru.
+let next = null;
+while (!stopping || next) {
   let worked = false;
   stats.polls += 1;
   try {
-    worked = await processNext({ db, cfg, log });
+    const job = next;
+    next = null;
+    const r = await processNext({ db, cfg, log, job, chain: () => !stopping });
+    worked = Boolean(r);
+    next = r?.next ?? null;
     if (worked) stats.jobs += 1;
   } catch (err) {
     if (isBusyError(err)) {
